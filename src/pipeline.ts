@@ -44,9 +44,19 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     return [] as string[];
   });
 
+  // カテゴリの表記ゆれ防止用。取得失敗時は空扱いにし、ライティングエージェントが新規カテゴリを作成する。
+  const existingCategories = await microcms.getRecentCategories().catch((err) => {
+    logger.warn("既存カテゴリの取得に失敗しました。カテゴリ再利用なしで続行します。", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [] as string[];
+  });
+
   for (const topic of topics) {
     try {
-      const draft = await withOneRetry(`ライティング(${topic.keyword})`, () => writeArticle(claude, topic));
+      const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
+        writeArticle(claude, topic, existingCategories)
+      );
       const image = await generateArticleImage(openai, draft);
       const review = await withOneRetry(`査読(${topic.keyword})`, () =>
         reviewArticle(claude, draft, env, existingArticleTitles)
@@ -59,6 +69,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
 
       const articleId = await publishArticle(env, microcms, draft, review, image);
       existingArticleTitles.push(draft.title);
+      if (!existingCategories.includes(draft.category)) existingCategories.push(draft.category);
       results.push({
         topic,
         draft,

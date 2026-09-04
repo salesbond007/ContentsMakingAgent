@@ -87,6 +87,25 @@ export class MicroCmsClient {
     return res.contents.map((c) => c[art.title] as string).filter(Boolean);
   }
 
+  /**
+   * 既存記事で使われているカテゴリ名の重複無し一覧を取得する。
+   * ライティングエージェントが自己分類する際、表記ゆれ（似た意味のカテゴリの乱立）を防ぐために
+   * 「できるだけ既存のものを再利用する」ための材料として渡す。
+   */
+  async getRecentCategories(limit = 100): Promise<string[]> {
+    const art = this.fields.articles;
+    const query = new URLSearchParams({
+      fields: art.category,
+      limit: String(limit),
+      orders: "-publishedAt",
+    });
+    const res = await this.request<MicroCmsListResponse<Record<string, unknown>>>(
+      `/${this.env.MICROCMS_ARTICLES_ENDPOINT}?${query.toString()}`
+    );
+    const categories = res.contents.map((c) => c[art.category] as string).filter(Boolean);
+    return Array.from(new Set(categories));
+  }
+
   /** 探索で見つけた新規キーワードを台帳に追加する（重複防止のため次回以降の巡回対象になる）。 */
   async registerKeyword(keyword: string, sourceUrls: string[]): Promise<string> {
     const kw = this.fields.keywords;
