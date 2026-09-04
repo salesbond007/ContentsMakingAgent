@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import mammoth from "mammoth";
 import type { Env } from "../config.js";
 import { logger } from "../lib/logger.js";
 
@@ -44,12 +45,20 @@ export async function fetchInternalDocs(env: Env): Promise<InternalDoc[]> {
         );
         docs.push({ name: file.name, text: String(exported.data) });
       } else if (
-        file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        file.mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       ) {
-        // Office形式はGoogle形式に変換されていない場合、テキスト抽出には別途パーサーが必要。
-        // 導入時にファイル形式を確認し、必要であればoffice-text-extractor等を追加する。
-        logger.warn("Office形式ファイルのテキスト抽出は未実装です", { name: file.name });
+        const downloaded = await drive.files.get(
+          { fileId: file.id, alt: "media" },
+          { responseType: "arraybuffer" }
+        );
+        const { value: text } = await mammoth.extractRawText({
+          buffer: Buffer.from(downloaded.data as ArrayBuffer),
+        });
+        docs.push({ name: file.name, text });
+      } else if (file.mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+        // PowerPoint(.pptx)のテキスト抽出は未実装（スライドXMLの解析が必要なため対応保留）。
+        // 導入時に資料形式がpptx中心であれば専用パーサーの追加を検討する。
+        logger.warn("PowerPoint(.pptx)のテキスト抽出は未実装です", { name: file.name });
       }
     } catch (err) {
       logger.warn("社内資料の取得に失敗しました", {

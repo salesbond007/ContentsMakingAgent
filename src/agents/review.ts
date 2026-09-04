@@ -34,7 +34,8 @@ interface ReviewLlmOutput {
 export async function reviewArticle(
   claude: Anthropic,
   draft: ArticleDraft,
-  env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">
+  env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">,
+  existingArticleTitles: string[] = []
 ): Promise<ReviewResult> {
   const output = await askClaudeForJson<ReviewLlmOutput>(claude, {
     system:
@@ -42,11 +43,14 @@ export async function reviewArticle(
       "1. 事実確認: 本文中の主張・数値が出典URLの内容と整合しているか。出典の無い断定は減点。\n" +
       "2. リスク表現: 「必ず」「保証します」等の断定的表現、誇大な効果訴求が無いか。\n" +
       "3. ブランド・トンマナ: BtoBメディアとして落ち着いた文体・語彙になっているか。\n" +
-      "4. 剽窃・重複: 出典の丸写しや不自然な類似表現が無いか。\n" +
+      "4. 剽窃・重複: 出典の丸写しや不自然な類似表現が無いか。加えて「既存の自社記事タイトル一覧」と\n" +
+      "   テーマ・切り口が実質的に重複していないかも確認し、重複していれば減点すること。\n" +
       "カテゴリの妥当性は採点対象に含めないこと（ライティング側で確定済み）。JSONオブジェクトのみを返してください。",
     prompt:
       `記事タイトル: ${draft.title}\n` +
-      `参考ソースURL: ${draft.topic.sourceUrls.join(", ") || "なし"}\n\n` +
+      `参考ソースURL: ${draft.topic.sourceUrls.join(", ") || "なし"}\n` +
+      `既存の自社記事タイトル一覧（直近${existingArticleTitles.length}件）:\n` +
+      `${existingArticleTitles.map((t) => `- ${t}`).join("\n") || "なし"}\n\n` +
       `本文:\n${draft.body}\n\n` +
       `出力形式(JSON):\n` +
       `{\n` +

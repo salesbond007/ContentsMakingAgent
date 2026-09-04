@@ -52,6 +52,19 @@ export class MicroCmsClient {
     }));
   }
 
+  /** 直近の公開記事タイトルを取得する。査読エージェントの「剽窃・重複」判定で自社記事との重複チェックに使う。 */
+  async getRecentArticleTitles(limit = 50): Promise<string[]> {
+    const query = new URLSearchParams({
+      fields: "title",
+      limit: String(limit),
+      orders: "-publishedAt",
+    });
+    const res = await this.request<MicroCmsListResponse<{ title: string }>>(
+      `/${this.env.MICROCMS_ARTICLES_ENDPOINT}?${query.toString()}`
+    );
+    return res.contents.map((c) => c.title).filter(Boolean);
+  }
+
   /** 探索で見つけた新規キーワードを台帳に追加する（重複防止のため次回以降の巡回対象になる）。 */
   async registerKeyword(keyword: string, sourceUrls: string[]): Promise<string> {
     const res = await this.request<{ id: string }>(`/${this.env.MICROCMS_KEYWORDS_ENDPOINT}`, {

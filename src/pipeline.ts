@@ -35,11 +35,22 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const topics = await collectTopics(env, claude, microcms, articleCount);
   const results: PipelineArticleResult[] = [];
 
+  // 査読エージェントの「剽窃・重複」判定用に既存記事タイトルを取得（取得失敗時は空扱いで続行）。
+  // 同一実行内で公開した記事タイトルも都度追加し、1回のバッチ内での重複も検知できるようにする。
+  const existingArticleTitles = await microcms.getRecentArticleTitles().catch((err) => {
+    logger.warn("既存記事タイトルの取得に失敗しました。重複チェックなしで続行します。", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [] as string[];
+  });
+
   for (const topic of topics) {
     try {
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () => writeArticle(claude, topic));
       const image = await generateArticleImage(openai, draft);
-      const review = await withOneRetry(`査読(${topic.keyword})`, () => reviewArticle(claude, draft, env));
+      const review = await withOneRetry(`査読(${topic.keyword})`, () =>
+        reviewArticle(claude, draft, env, existingArticleTitles)
+      );
 
       if (review.verdict === "rejected") {
         results.push({ topic, draft, image, review, status: "rejected" });
@@ -47,6 +58,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       }
 
       const articleId = await publishArticle(env, microcms, draft, review, image);
+      existingArticleTitles.push(draft.title);
       results.push({
         topic,
         draft,

@@ -59,11 +59,16 @@ Slack通知・Googleドライブ連携・競合RSS巡回は任意（未設定で
 - Secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MICROCMS_SERVICE_DOMAIN`, `MICROCMS_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_FOLDER_ID`
 - Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`, `DAILY_API_CALL_CAP`, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`
 
+## CI
+
+`.github/workflows/ci.yml` がpush/PR時にtypecheck・test・buildを自動実行する。
+
 ## 未実装・要確認事項（要件定義書「09 — 未決定・次のステップ」より）
 
-- 査読しきい値・掲載先自動判定・コスト上限の最終承認
+- 査読しきい値・掲載先自動判定・コスト上限の最終承認（社長判断待ち）
 - 競合・業界サイトの巡回対象URLリスト（現状は `COMPETITOR_RSS_FEEDS` にRSS URLを設定する運用）
 - ブランド・トンマナガイドラインの整備（現状は査読プロンプト内に簡易的な方針のみ記述）
 - Googleサービスアカウントの発行・共有ドライブフォルダの準備
-- Office形式（Word/PowerPoint）ファイルのテキスト抽出は未実装（Googleドキュメント/スプレッドシートのみ対応）
+- PowerPoint(.pptx)ファイルのテキスト抽出は未実装（Googleドキュメント・Word(.docx)は対応済み）
 - microCMSの下書き保存API仕様（`status=draft` クエリ）は契約プランにより異なる場合があるため、導入時に実挙動を確認すること
+- 実APIキー未設定のためエンドツーエンドの実行検証はまだ行えていない。キー登録後に `workflow_dispatch` での試験実行を推奨
