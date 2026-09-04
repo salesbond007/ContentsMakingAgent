@@ -9,6 +9,7 @@ const envSchema = z.object({
   MICROCMS_API_KEY: z.string().min(1, "MICROCMS_API_KEY is required"),
   MICROCMS_ARTICLES_ENDPOINT: z.string().default("articles"),
   MICROCMS_KEYWORDS_ENDPOINT: z.string().default("keywords"),
+  MICROCMS_FIELD_MAP_PATH: z.string().optional(),
 
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 

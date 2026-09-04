@@ -38,7 +38,11 @@ Slack通知・Googleドライブ連携・競合RSS巡回は任意（未設定で
 - `articles`: title, excerpt, body, category, tags, seo(metaTitle/metaDescription), eyecatch, eyecatchAlt, publishTargets, reviewScore, reviewComments
 - `keywords`: keyword, sourceUrls, usedAt, articleId（重複キーワード防止の台帳）
 
-フィールド名・型はmicroCMS側のスキーマ確定後に `src/clients/microcms.ts` と `src/agents/publish.ts` を合わせて調整すること。
+型（フィールドが存在すること）自体はmicroCMS側で確定させる必要があるが、**各フィールドのフィールドID（項目名）はコードを変更せずに追従できる**。
+[`config/microcms-fields.json`](./config/microcms-fields.json) が論理名→実際のフィールドIDの対応表になっており、
+microCMS側でフィールドIDをリネームした場合はこのJSONファイルを書き換えるだけでよい（TypeScriptの変更・再ビルドは不要、push後の次回実行から反映される）。
+一部のフィールドだけ書き換えれば十分で、書かれていないフィールドはデフォルト値が使われる。
+ファイル自体が存在しない場合もデフォルト値にフォールバックする。
 
 ## 査読ゲートのしきい値
 

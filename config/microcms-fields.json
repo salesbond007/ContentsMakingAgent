@@ -1,0 +1,26 @@
+{
+  "_comment": "microCMS側でフィールドID（APIスキーマの『フィールドID』欄）を変更・追加した場合は、ここだけ書き換えてください。TypeScriptのコードは変更不要です。左側(キー)は固定、右側(値)がmicroCMSの実際のフィールドIDです。",
+
+  "articles": {
+    "title": "title",
+    "excerpt": "excerpt",
+    "body": "body",
+    "category": "category",
+    "tags": "tags",
+    "seo": "seo",
+    "seoMetaTitle": "metaTitle",
+    "seoMetaDescription": "metaDescription",
+    "eyecatch": "eyecatch",
+    "eyecatchAlt": "eyecatchAlt",
+    "publishTargets": "publishTargets",
+    "reviewScore": "reviewScore",
+    "reviewComments": "reviewComments"
+  },
+
+  "keywords": {
+    "keyword": "keyword",
+    "sourceUrls": "sourceUrls",
+    "usedAt": "usedAt",
+    "articleId": "articleId"
+  }
+}
