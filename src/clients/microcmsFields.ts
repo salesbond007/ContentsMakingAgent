@@ -8,7 +8,6 @@ export interface ArticleFieldMap {
   body: string;
   category: string;
   tags: string;
-  seo: string;
   seoMetaTitle: string;
   seoMetaDescription: string;
   eyecatch: string;
@@ -37,9 +36,8 @@ const DEFAULT_FIELD_MAPS: FieldMaps = {
     body: "body",
     category: "category",
     tags: "tags",
-    seo: "seo",
-    seoMetaTitle: "metaTitle",
-    seoMetaDescription: "metaDescription",
+    seoMetaTitle: "seoMetaTitle",
+    seoMetaDescription: "seoMetaDescription",
     eyecatch: "eyecatch",
     eyecatchAlt: "eyecatchAlt",
     publishTargets: "publishTargets",

@@ -35,8 +35,12 @@ Slack通知・Googleドライブ連携・競合RSS巡回は任意（未設定で
 
 ## microCMSに必要なコンテンツ型
 
-- `articles`: title, excerpt, body, category, tags, seo(metaTitle/metaDescription), eyecatch, eyecatchAlt, publishTargets, reviewScore, reviewComments
-- `keywords`: keyword, sourceUrls, usedAt, articleId（重複キーワード防止の台帳）
+- `articles`: title(テキスト), excerpt(テキストエリア), body(リッチエディタ等), category(テキスト等), tags(テキストエリア、改行区切り), seoMetaTitle(テキスト), seoMetaDescription(テキストエリア), eyecatch(画像), eyecatchAlt(テキスト), publishTargets(テキストエリア、改行区切り), reviewScore(数字), reviewComments(テキストエリア)
+- `keywords`: keyword(テキスト), sourceUrls(テキストエリア、改行区切り), usedAt(日時), articleId(テキスト)（重複キーワード防止の台帳）
+
+`seo` はmicroCMSの「カスタムフィールド」を使わずに済むよう、ネストしたオブジェクトにせず `seoMetaTitle` / `seoMetaDescription` の2つのフラットなフィールドとして扱う。
+`tags` / `sourceUrls` / `publishTargets` のような配列項目も、microCMSの「複数選択」（選択肢の事前登録が必要）を避け、
+改行区切りの1本のテキストとして保存・読み出しする（`src/clients/microcms.ts` の `toMultilineText`/`fromMultilineText`）。
 
 型（フィールドが存在すること）自体はmicroCMS側で確定させる必要があるが、**各フィールドのフィールドID（項目名）はコードを変更せずに追従できる**。
 [`config/microcms-fields.json`](./config/microcms-fields.json) が論理名→実際のフィールドIDの対応表になっており、

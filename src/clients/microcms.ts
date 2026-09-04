@@ -9,6 +9,23 @@ interface MicroCmsListResponse<T> {
   limit: number;
 }
 
+/**
+ * tags / sourceUrls / publishTargets は、microCMS側で事前登録不要な「テキストエリア」フィールドとして
+ * 運用する前提で、配列を改行区切りの1本の文字列に変換して保存する（複数選択フィールドは選択肢の事前登録が
+ * 必要でAI生成のタグ等と相性が悪いため採用しない）。読み出し時は逆に改行で分割して配列に戻す。
+ */
+function toMultilineText(values: string[]): string {
+  return values.join("\n");
+}
+
+function fromMultilineText(value: unknown): string[] {
+  if (typeof value !== "string" || value.trim() === "") return [];
+  return value
+    .split("\n")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 export class MicroCmsClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -52,7 +69,7 @@ export class MicroCmsClient {
       keyword: c[kw.keyword] as string,
       usedAt: c[kw.usedAt] as string | undefined,
       articleId: c[kw.articleId] as string | undefined,
-      sourceUrls: (c[kw.sourceUrls] as string[] | undefined) ?? [],
+      sourceUrls: fromMultilineText(c[kw.sourceUrls]),
     }));
   }
 
@@ -75,7 +92,7 @@ export class MicroCmsClient {
     const kw = this.fields.keywords;
     const res = await this.request<{ id: string }>(`/${this.env.MICROCMS_KEYWORDS_ENDPOINT}`, {
       method: "POST",
-      body: JSON.stringify({ [kw.keyword]: keyword, [kw.sourceUrls]: sourceUrls }),
+      body: JSON.stringify({ [kw.keyword]: keyword, [kw.sourceUrls]: toMultilineText(sourceUrls) }),
     });
     return res.id;
   }
@@ -125,12 +142,10 @@ export class MicroCmsClient {
       [art.excerpt]: draft.excerpt,
       [art.body]: draft.body,
       [art.category]: draft.category,
-      [art.tags]: draft.tags,
-      [art.seo]: {
-        [art.seoMetaTitle]: draft.seo.metaTitle,
-        [art.seoMetaDescription]: draft.seo.metaDescription,
-      },
-      [art.publishTargets]: [publishTargetName],
+      [art.tags]: toMultilineText(draft.tags),
+      [art.seoMetaTitle]: draft.seo.metaTitle,
+      [art.seoMetaDescription]: draft.seo.metaDescription,
+      [art.publishTargets]: toMultilineText([publishTargetName]),
       [art.reviewScore]: review.total,
       [art.reviewComments]: review.comments.join("\n"),
     };
