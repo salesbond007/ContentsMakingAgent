@@ -151,7 +151,10 @@ export class MicroCmsClient {
     };
 
     if (eyecatch) {
-      content[art.eyecatch] = { url: eyecatch.url };
+      // microCMSの単一「画像」フィールドは、読み取り時は{url,...}のオブジェクトを返すが、
+      // 書き込み時(POST/PATCH)はURL文字列そのものを渡す仕様（{url:...}オブジェクトを送ると
+      // 「unexpected data type」エラーになる）。alt文字列は別フィールド(eyecatchAlt)で管理する。
+      content[art.eyecatch] = eyecatch.url;
       content[art.eyecatchAlt] = eyecatch.alt;
     }
 
