@@ -1,0 +1,41 @@
+name: Daily Content Pipeline
+
+on:
+  schedule:
+    # 06:00 JST = 21:00 UTC(前日)。運用開始後に配信時間を調整すること。
+    - cron: "0 21 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  generate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm run start
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MICROCMS_SERVICE_DOMAIN: ${{ secrets.MICROCMS_SERVICE_DOMAIN }}
+          MICROCMS_API_KEY: ${{ secrets.MICROCMS_API_KEY }}
+          MICROCMS_ARTICLES_ENDPOINT: ${{ vars.MICROCMS_ARTICLES_ENDPOINT }}
+          MICROCMS_KEYWORDS_ENDPOINT: ${{ vars.MICROCMS_KEYWORDS_ENDPOINT }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          COMPETITOR_RSS_FEEDS: ${{ vars.COMPETITOR_RSS_FEEDS }}
+          DAILY_ARTICLE_COUNT: ${{ vars.DAILY_ARTICLE_COUNT }}
+          DAILY_API_CALL_CAP: ${{ vars.DAILY_API_CALL_CAP }}
+          REVIEW_AUTO_PUBLISH_THRESHOLD: ${{ vars.REVIEW_AUTO_PUBLISH_THRESHOLD }}
+          REVIEW_NEEDS_CHECK_THRESHOLD: ${{ vars.REVIEW_NEEDS_CHECK_THRESHOLD }}
+          PUBLISH_TARGET_NAME: ${{ vars.PUBLISH_TARGET_NAME }}

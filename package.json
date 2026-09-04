@@ -1,0 +1,31 @@
+{
+  "name": "contents-making-agent",
+  "version": "0.1.0",
+  "description": "BondAIメディア向けコンテンツ制作自動化パイプライン（情報収集→執筆→画像生成→査読→microCMS公開）",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0",
+    "openai": "^4.73.0",
+    "rss-parser": "^3.13.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

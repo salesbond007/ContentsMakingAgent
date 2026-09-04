@@ -1,0 +1,47 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const envSchema = z.object({
+  ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
+  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
+
+  MICROCMS_SERVICE_DOMAIN: z.string().min(1, "MICROCMS_SERVICE_DOMAIN is required"),
+  MICROCMS_API_KEY: z.string().min(1, "MICROCMS_API_KEY is required"),
+  MICROCMS_ARTICLES_ENDPOINT: z.string().default("articles"),
+  MICROCMS_KEYWORDS_ENDPOINT: z.string().default("keywords"),
+
+  SLACK_WEBHOOK_URL: z.string().url().optional(),
+
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().optional(),
+
+  COMPETITOR_RSS_FEEDS: z.string().optional(),
+
+  DAILY_ARTICLE_COUNT: z.coerce.number().int().positive().default(3),
+  DAILY_API_CALL_CAP: z.coerce.number().int().positive().default(4),
+  REVIEW_AUTO_PUBLISH_THRESHOLD: z.coerce.number().int().min(0).max(100).default(80),
+  REVIEW_NEEDS_CHECK_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
+  PUBLISH_TARGET_NAME: z.string().default("BondAIメディア"),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+let cached: Env | undefined;
+
+export function loadConfig(): Env {
+  if (cached) return cached;
+  const parsed = envSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `- ${i.path.join(".")}: ${i.message}`).join("\n");
+    throw new Error(`環境変数の検証に失敗しました:\n${issues}`);
+  }
+  cached = parsed.data;
+  return cached;
+}
+
+export function competitorFeeds(env: Env): string[] {
+  return (env.COMPETITOR_RSS_FEEDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}

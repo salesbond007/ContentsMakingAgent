@@ -1,0 +1,66 @@
+import type Anthropic from "@anthropic-ai/sdk";
+import { askClaudeForJson } from "../clients/claude.js";
+import type { ArticleDraft, ReviewResult, ReviewScores, ReviewVerdict } from "../types.js";
+import type { Env } from "../config.js";
+
+/**
+ * 4観点（事実確認／リスク表現／ブランド・トンマナ／剽窃・重複）を各25点でスコアリングし、
+ * 合計点からしきい値に基づいて判定する（純粋関数・テスト容易性のため分離）。
+ */
+export function decideVerdict(scores: ReviewScores, env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">): {
+  total: number;
+  verdict: ReviewVerdict;
+} {
+  const total =
+    scores.factCheck + scores.riskExpression + scores.brandToneManner + scores.plagiarismDuplication;
+
+  let verdict: ReviewVerdict;
+  if (total >= env.REVIEW_AUTO_PUBLISH_THRESHOLD) {
+    verdict = "auto-publish";
+  } else if (total >= env.REVIEW_NEEDS_CHECK_THRESHOLD) {
+    verdict = "needs-review";
+  } else {
+    verdict = "rejected";
+  }
+
+  return { total, verdict };
+}
+
+interface ReviewLlmOutput {
+  scores: ReviewScores;
+  comments: string[];
+}
+
+export async function reviewArticle(
+  claude: Anthropic,
+  draft: ArticleDraft,
+  env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">
+): Promise<ReviewResult> {
+  const output = await askClaudeForJson<ReviewLlmOutput>(claude, {
+    system:
+      "あなたはBondAIメディアの査読・ファクトチェック担当者です。以下の4観点をそれぞれ0〜25点で採点してください。\n" +
+      "1. 事実確認: 本文中の主張・数値が出典URLの内容と整合しているか。出典の無い断定は減点。\n" +
+      "2. リスク表現: 「必ず」「保証します」等の断定的表現、誇大な効果訴求が無いか。\n" +
+      "3. ブランド・トンマナ: BtoBメディアとして落ち着いた文体・語彙になっているか。\n" +
+      "4. 剽窃・重複: 出典の丸写しや不自然な類似表現が無いか。\n" +
+      "カテゴリの妥当性は採点対象に含めないこと（ライティング側で確定済み）。JSONオブジェクトのみを返してください。",
+    prompt:
+      `記事タイトル: ${draft.title}\n` +
+      `参考ソースURL: ${draft.topic.sourceUrls.join(", ") || "なし"}\n\n` +
+      `本文:\n${draft.body}\n\n` +
+      `出力形式(JSON):\n` +
+      `{\n` +
+      `  "scores": { "factCheck": 0-25, "riskExpression": 0-25, "brandToneManner": 0-25, "plagiarismDuplication": 0-25 },\n` +
+      `  "comments": ["指摘事項1", "指摘事項2"]\n` +
+      `}`,
+  });
+
+  const { total, verdict } = decideVerdict(output.scores, env);
+
+  return {
+    scores: output.scores,
+    total,
+    verdict,
+    comments: output.comments ?? [],
+  };
+}
