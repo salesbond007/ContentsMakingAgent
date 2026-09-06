@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { askClaudeForJson } from "../clients/claude.js";
 import type { CtaOption } from "../clients/ctas.js";
+import type { StyleReference } from "../clients/styleReferences.js";
 import type { ArticleDraft, FigureSpec, Topic } from "../types.js";
 
 interface WritingLlmOutput {
@@ -46,13 +47,21 @@ export async function writeArticle(
   topic: Topic,
   existingCategories: string[] = [],
   ctaOptions: CtaOption[] = [],
-  forcedCtaId?: string
+  forcedCtaId?: string,
+  styleReferences: StyleReference[] = []
 ): Promise<ArticleDraft> {
   const output = await askClaudeForJson<WritingLlmOutput>(claude, {
     system:
       "あなたはBtoB向けAIメディア「BondAIメディア」のライターです。" +
       "断定的な保証表現（『必ず』『保証します』等）や誇大な効果訴求を避け、" +
       "根拠のある落ち着いたトーンで執筆してください。" +
+      (styleReferences.length > 0
+        ? "文体・構成のお手本として指定された参考記事があります。必ずweb_fetchツールで実際に取得し、" +
+          "その文体・構成の雰囲気を参考にしてください（内容や文章そのものを転載してはいけません、" +
+          "あくまでトーン・書き方の参考です）。\n" +
+          styleReferences.map((r) => `- ${r.url}（${r.note}）`).join("\n") +
+          "\n"
+        : "") +
       "参考ソースURLが与えられた場合は、必ずweb_fetchツールで実際にページ内容を取得し、" +
       "そこに書かれている事実に基づいて執筆してください。URLの文字面だけで内容を推測して書かないこと。" +
       "情報が古い・不足している場合や、参考ソースが無い場合は、web_searchツールで補足の裏付け情報を検索して構いません。" +

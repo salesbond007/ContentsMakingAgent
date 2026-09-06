@@ -9,6 +9,7 @@ import { generateArticleImage, generateFigures } from "./agents/image.js";
 import { reviewArticle } from "./agents/review.js";
 import { publishArticle } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
+import { loadStyleReferences } from "./clients/styleReferences.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.js";
@@ -26,6 +27,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const openai = createOpenAiClient(env);
   const microcms = new MicroCmsClient(env);
   const ctaOptions = loadCtas(env.CTA_CONFIG_PATH);
+  const styleReferences = loadStyleReferences(env.STYLE_REFERENCES_PATH);
 
   const isManualRun = !!env.MANUAL_KEYWORD || !!env.MANUAL_CTA_ID;
   const forcedCta = env.MANUAL_CTA_ID ? ctaOptions.find((c) => c.id === env.MANUAL_CTA_ID) : undefined;
@@ -82,7 +84,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   for (const topic of topics) {
     try {
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
-        writeArticle(claude, topic, existingCategories, ctaOptions, forcedCta?.id)
+        writeArticle(claude, topic, existingCategories, ctaOptions, forcedCta?.id, styleReferences)
       );
       const image = await generateArticleImage(openai, draft);
       const figures = await generateFigures(openai, draft);
