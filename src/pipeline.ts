@@ -16,7 +16,6 @@ import { loadNgWords } from "./clients/ngWords.js";
 import { loadSiteConfig, buildArticleUrl } from "./clients/siteConfig.js";
 import { loadImageLibrary } from "./clients/imageLibrary.js";
 import { loadGlobalSettings } from "./clients/globalSettings.js";
-import { appendPendingNotification } from "./clients/notificationLog.js";
 import { appendDailyStats } from "./clients/dailyStats.js";
 import { appendReviewQueueItem } from "./clients/reviewQueue.js";
 import { withOneRetry } from "./lib/retry.js";
@@ -34,9 +33,9 @@ import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.j
  * CMSへ反映される(publishApproved.ts)。自動実行は従来通り、査読ゲートの判定に基づき
  * 自動公開／下書き保存／差し戻しを行う。
  *
- * 通知方針: 手動実行はその場でSlackに結果を通知する（管理画面から見て分かりやすくするため）。
- * 一方、毎日の自動実行はリアルタイム通知せず、結果をdata/pending-notifications.jsonに蓄積するだけにし、
- * 別ワークフロー(21:00 JST)がまとめて1通のSlackメッセージとして送信する。
+ * 通知方針: 自動実行・手動実行を問わず、記事1本の処理が完了するたびに即座にSlackへ通知する
+ * (公開/下書き・要確認/差し戻し/確認待ち/エラーいずれの場合もタイトル・スコア等の必要な情報を含める)。
+ * 実行全体が終わった際にも、まとめの合計件数を1通送る。
  */
 export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const startedAt = new Date().toISOString();
@@ -192,6 +191,8 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
         reviewArticle(claude, draft, env, existingArticleTitles, ngWords, globalSettings.mustNotViolate || undefined)
       );
 
+      let result: PipelineArticleResult;
+
       if (isManualRun) {
         // 手動生成はAIの査読結果(自動公開/要確認/差し戻し)に関わらずCMSへ直接反映せず、
         // 人間が管理画面で確認・承認するまで確認待ちキューに置いておく。
@@ -206,35 +207,36 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
           },
           env.REVIEW_QUEUE_PATH
         );
-        results.push({ topic, draft, image, review, status: "pending-review" });
-        continue;
+        result = { topic, draft, image, review, status: "pending-review" };
+      } else if (review.verdict === "rejected") {
+        result = { topic, draft, image, review, status: "rejected" };
+      } else {
+        const articleId = await publishArticle(env, microcms, draft, review, image, figures);
+        existingArticleTitles.push(draft.title);
+        if (!existingCategories.includes(draft.category)) existingCategories.push(draft.category);
+        result = {
+          topic,
+          draft,
+          image,
+          review,
+          status: review.verdict === "auto-publish" ? "published" : "needs-review",
+          microcmsContentId: articleId,
+        };
       }
 
-      if (review.verdict === "rejected") {
-        results.push({ topic, draft, image, review, status: "rejected" });
-        continue;
-      }
-
-      const articleId = await publishArticle(env, microcms, draft, review, image, figures);
-      existingArticleTitles.push(draft.title);
-      if (!existingCategories.includes(draft.category)) existingCategories.push(draft.category);
-      results.push({
-        topic,
-        draft,
-        image,
-        review,
-        status: review.verdict === "auto-publish" ? "published" : "needs-review",
-        microcmsContentId: articleId,
-      });
+      results.push(result);
+      // 記事1本の処理が完了するたびに、その場でSlackに通知する(リアルタイム通知)。
+      await notifySlack(env, buildResultLine(result));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error("記事の生成に失敗したためスキップします", { keyword: topic.keyword, error: message });
-      results.push({ topic, status: "skipped-error", error: message });
+      const result: PipelineArticleResult = { topic, status: "skipped-error", error: message };
+      results.push(result);
+      await notifySlack(env, buildResultLine(result));
     }
   }
 
   const finishedAt = new Date().toISOString();
-  const digest = buildCompletionDigest(results);
 
   // 手動生成(pending-review)はまだCMSに何も反映されていないため、日次統計には含めない
   // (承認された時点でpublishApproved.ts側の公開実績としてカウントされるべきもの)。
@@ -249,48 +251,37 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     env.DAILY_STATS_PATH
   );
 
-  if (isManualRun) {
-    // 手動実行は管理画面から見て分かりやすいよう、その場で通知する。
-    await notifySlack(env, digest);
-  } else {
-    // 自動実行はリアルタイム通知せず蓄積し、21:00 JSTの別ワークフローがまとめて送信する。
-    appendPendingNotification(digest, env.PENDING_NOTIFICATIONS_PATH);
+  if (results.length > 1) {
+    await notifySlack(env, buildTotalsLine(results));
   }
 
   return { startedAt, finishedAt, results };
 }
 
-function buildCompletionDigest(results: PipelineArticleResult[]): string {
-  const lines: string[] = [];
-
-  for (const r of results) {
-    const title = r.draft?.title ?? r.topic.keyword;
-    if (r.status === "published") {
-      lines.push(`✅ 記事：記事公開しました - ${title}`);
-    } else if (r.status === "needs-review") {
-      lines.push(
-        `📝 記事：下書きに入れました - ${title}（要確認、スコア: ${r.review?.total}） — ${r.review?.comments.join(" / ") ?? ""}`
-      );
-    } else if (r.status === "rejected") {
-      lines.push(`↩️ 記事：差し戻しました - ${title}（スコア: ${r.review?.total}）`);
-    } else if (r.status === "pending-review") {
-      lines.push(
-        `🕓 記事：ツールでの確認待ちです - ${title}（AI査読スコア: ${r.review?.total}）— 管理画面の「確認待ち」から確認・承認してください`
-      );
-    } else {
-      lines.push(`🚨 記事：エラーでスキップ - ${r.topic.keyword}（${r.error}）`);
-    }
+/** 記事1本分の処理結果を、必要な情報(状態・タイトル・スコア等)を含む1つのSlackメッセージ文にする。 */
+function buildResultLine(r: PipelineArticleResult): string {
+  const title = r.draft?.title ?? r.topic.keyword;
+  if (r.status === "published") {
+    return `✅ 記事：記事公開しました - ${title}`;
+  } else if (r.status === "needs-review") {
+    return (
+      `📝 記事：下書きに入れました - ${title}（要確認、スコア: ${r.review?.total}） — ${r.review?.comments.join(" / ") ?? ""}`
+    );
+  } else if (r.status === "rejected") {
+    return `↩️ 記事：差し戻しました - ${title}（スコア: ${r.review?.total}）`;
+  } else if (r.status === "pending-review") {
+    return (
+      `🕓 記事：ツールでの確認待ちです - ${title}（AI査読スコア: ${r.review?.total}）— 管理画面の「確認待ち」から確認・承認してください`
+    );
   }
+  return `🚨 記事：エラーでスキップ - ${r.topic.keyword}（${r.error}）`;
+}
 
+function buildTotalsLine(results: PipelineArticleResult[]): string {
   const published = results.filter((r) => r.status === "published").length;
   const needsReview = results.filter((r) => r.status === "needs-review").length;
   const rejected = results.filter((r) => r.status === "rejected").length;
   const pendingReview = results.filter((r) => r.status === "pending-review").length;
   const errors = results.filter((r) => r.status === "skipped-error").length;
-  lines.push(
-    "",
-    `合計: 公開${published}件 / 下書き${needsReview}件 / 差し戻し${rejected}件 / 確認待ち${pendingReview}件 / エラー${errors}件`
-  );
-
-  return lines.join("\n");
+  return `合計: 公開${published}件 / 下書き${needsReview}件 / 差し戻し${rejected}件 / 確認待ち${pendingReview}件 / エラー${errors}件`;
 }

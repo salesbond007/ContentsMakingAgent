@@ -91,8 +91,12 @@ export default function ImagesPage() {
         <p style={{ marginTop: 0 }}>
           参考画像の実体はGoogleドライブに格納する運用です。以下のフォルダに格納してください。
         </p>
-        <p style={{ marginBottom: 0 }}>
+        <p>
           格納先: <a href={DRIVE_FOLDER_URL} target="_blank" rel="noreferrer">{DRIVE_FOLDER_URL}</a>
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          ここに登録する画像は「厳密に再現すべきテンプレート」ではなく、あくまで配色・雰囲気の参考です。
+          AIは記事の内容に応じて構図やデザインを柔軟に調整します。
         </p>
       </div>
 

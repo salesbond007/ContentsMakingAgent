@@ -185,8 +185,7 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 
 ## GitHub Actions
 
-- `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（`DAILY_ARTICLE_COUNT`が0の間はAI呼び出しを行わず終了、手動実行は本数設定に関わらず常に動く）。
-- `.github/workflows/daily-notify.yml`: 毎日21:00 JSTに、その日の自動実行結果をまとめて1通のSlackメッセージとして送信する（自動実行はリアルタイム通知しない。手動実行は従来通り即時通知）。
+- `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（`DAILY_ARTICLE_COUNT`が0の間はAI呼び出しを行わず終了、手動実行は本数設定に関わらず常に動く）。自動・手動を問わず、記事1本の処理が完了するたびにその場でSlackへ通知する（公開/下書き・要確認/差し戻し/確認待ち/エラーいずれもタイトルやスコア等の必要な情報を添えてリアルタイム送信し、実行全体の終了時にも合計件数を1通送る）。
 - `.github/workflows/weekly-report.yml`: 毎週月曜21:10 JSTに、直近7日間の集計とリライト候補をSlackに送信する。
 - `.github/workflows/publish-approved.yml`: 管理画面の「確認待ち」で承認された手動生成記事を、管理画面から`queue_id`付きでworkflow_dispatchされてCMSへ反映する(常に即時公開)。
 

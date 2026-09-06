@@ -12,7 +12,6 @@ const envSchema = z.object({
   MICROCMS_FIELD_MAP_PATH: z.string().optional(),
   CTA_CONFIG_PATH: z.string().optional(),
   REFERENCE_MATERIALS_PATH: z.string().optional(),
-  PENDING_NOTIFICATIONS_PATH: z.string().optional(),
   NG_WORDS_PATH: z.string().optional(),
   SITE_CONFIG_PATH: z.string().optional(),
   IMAGE_LIBRARY_PATH: z.string().optional(),

@@ -61,8 +61,10 @@ async function generateEyecatchFromReference(
 
   const prompt =
     `${basePrompt}\n\n` +
-    "参考画像として渡す既存のアイキャッチデザインの配色・構図・雰囲気を踏襲しつつ、" +
-    "この記事の内容に合わせて新しく描き直してください。" +
+    "参考画像として渡す既存のアイキャッチデザインは、あくまで雰囲気を掴むための参考程度に留めてください。" +
+    "配色・構図のトーンは緩やかに踏襲しつつも、記事の内容やテーマに応じて構図・要素・雰囲気を柔軟に" +
+    "変えて構いません（この参考画像に厳密に一致させる必要はありません）。この記事の内容に最も合う" +
+    "デザインを優先して新しく描き直してください。" +
     (referenceImage.note ? `\n参考画像についての補足: ${referenceImage.note}` : "");
 
   const result = await client.images.edit({
