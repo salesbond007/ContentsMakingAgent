@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
   const apiCallCap = Number(body.dailyApiCallCap);
 
   // 0 = 自動生成なし(手動生成のみ運用したい場合に使う)。
-  if (!Number.isInteger(articleCount) || articleCount < 0 || articleCount > 20) {
-    return NextResponse.json({ error: "1日の記事数は0〜20の整数で指定してください(0で自動生成なし)" }, { status: 400 });
+  if (!Number.isInteger(articleCount) || articleCount < 0 || articleCount > 100) {
+    return NextResponse.json({ error: "1日の記事数は0〜100の整数で指定してください(0で自動生成なし)" }, { status: 400 });
   }
-  if (!Number.isInteger(apiCallCap) || apiCallCap < 1 || apiCallCap > 20) {
-    return NextResponse.json({ error: "コスト上限は1〜20の整数で指定してください" }, { status: 400 });
+  if (!Number.isInteger(apiCallCap) || apiCallCap < 1 || apiCallCap > 100) {
+    return NextResponse.json({ error: "コスト上限は1〜100の整数で指定してください" }, { status: 400 });
   }
 
   try {

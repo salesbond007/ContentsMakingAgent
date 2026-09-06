@@ -55,13 +55,13 @@ export default function SettingsPage() {
         <h2>自動実行の設定</h2>
 
         <label>1日あたりの生成本数(0を指定すると自動生成を行いません)</label>
-        <input
-          type="number"
-          min={0}
-          max={20}
-          value={dailyArticleCount}
-          onChange={(e) => setDailyArticleCount(e.target.value)}
-        />
+        <select value={dailyArticleCount} onChange={(e) => setDailyArticleCount(e.target.value)}>
+          {Array.from({ length: 101 }, (_, n) => n).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
 
         <label>コスト上限(1日あたりのAPI呼び出し記事数の上限)</label>
         <input
