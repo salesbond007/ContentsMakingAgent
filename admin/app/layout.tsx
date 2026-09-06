@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import HeaderNav from "./HeaderNav";
+import Sidebar from "./Sidebar";
+import TopBar from "./TopBar";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "BondAIメディア コンテンツ管理",
@@ -9,10 +13,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja">
+    <html lang="ja" className={inter.variable}>
       <body>
-        <HeaderNav />
-        <div className="container">{children}</div>
+        <div className="shell">
+          <Sidebar />
+          <div className="main">
+            <TopBar />
+            <div className="content">{children}</div>
+          </div>
+        </div>
       </body>
     </html>
   );

@@ -39,12 +39,6 @@ export default function GeneratePage() {
 
   return (
     <div>
-      <h2>記事を生成</h2>
-      <p>
-        毎日の自動生成とは別に、指定した内容で1本だけ記事を作成します。keywordを空にしてcta_idだけ指定すると、
-        そのCTAへ自然につながる記事テーマをAIが逆算して提案・生成します。
-      </p>
-
       <form onSubmit={handleSubmit} className="card">
         <label>keyword(記事にしたいキーワード。空欄可)</label>
         <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="例: 生成AIによる契約書レビュー自動化" />

@@ -56,6 +56,39 @@ export async function updateRepoJsonFile(path: string, data: unknown, sha: strin
   }
 }
 
+/**
+ * GitHub ActionsのRepository variable(Settings > Secrets and variables > Actions > Variables)を取得する。
+ * 存在しない場合はnullを返す。
+ */
+export async function getRepoVariable(name: string): Promise<string | null> {
+  const { owner, repo } = repoInfo();
+  const res = await githubFetch(`/repos/${owner}/${repo}/actions/variables/${name}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as { value: string };
+  return json.value;
+}
+
+/** Repository variableを更新する。存在しない場合は新規作成する。 */
+export async function setRepoVariable(name: string, value: string): Promise<void> {
+  const { owner, repo } = repoInfo();
+  const existing = await getRepoVariable(name);
+
+  const res = await githubFetch(
+    existing === null
+      ? `/repos/${owner}/${repo}/actions/variables`
+      : `/repos/${owner}/${repo}/actions/variables/${name}`,
+    {
+      method: existing === null ? "POST" : "PATCH",
+      body: JSON.stringify({ name, value }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+  }
+}
+
 /** Daily Content Pipelineのworkflow_dispatchを手動発火する。 */
 export async function dispatchContentWorkflow(inputs: {
   keyword?: string;

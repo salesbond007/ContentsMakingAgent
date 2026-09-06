@@ -68,13 +68,13 @@ export default function CtasPage() {
 
   return (
     <div>
-      <h2>CTA管理</h2>
-      <p>
-        記事末尾に挿入するCTA(行動喚起リンク)の一覧です。AIはここに登録されたものの中からしか選べません
-        (URLのでっち上げ防止のため)。内部リンクのように頻繁に変わるものは、都度ここで追加・削除してください。
-      </p>
-
       {message && <div className={`message ${message.type}`}>{message.text}</div>}
+
+      {ctas.length === 0 && (
+        <div className="card">
+          <p style={{ margin: 0 }}>登録されているCTAはありません。記事にはCTAが挿入されません。</p>
+        </div>
+      )}
 
       {ctas.map((cta) => (
         <div className="item" key={cta.id}>
@@ -85,8 +85,8 @@ export default function CtasPage() {
             </button>
           </div>
           <p style={{ margin: "6px 0" }}>
-            id: <code>{cta.id}</code>
-            <br />
+            <span className="badge">{cta.id}</span>
+            <br /><br />
             URL: <a href={cta.url} target="_blank" rel="noreferrer">{cta.url}</a>
             <br />
             ボタン文言: {cta.buttonText}

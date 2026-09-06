@@ -33,22 +33,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-box card">
-      <h2>ログイン</h2>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="password">パスワード</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoFocus
-        />
-        {error && <div className="message error">{error}</div>}
-        <button type="submit" disabled={loading}>
-          {loading ? "確認中..." : "ログイン"}
-        </button>
-      </form>
+    <div className="login-shell" style={{ position: "fixed", inset: 0 }}>
+      <div className="login-box card">
+        <div className="card-icon" style={{ width: 44, height: 44, fontSize: 20 }}>◆</div>
+        <h2>BondAIメディア コンテンツ管理</h2>
+        <p style={{ textAlign: "center", marginTop: -8 }}>パスワードを入力してログインしてください</p>
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="password">パスワード</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+          />
+          {error && <div className="message error">{error}</div>}
+          <button type="submit" disabled={loading} style={{ width: "100%" }}>
+            {loading ? "確認中..." : "ログイン"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

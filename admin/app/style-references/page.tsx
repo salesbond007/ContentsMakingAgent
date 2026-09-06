@@ -62,13 +62,13 @@ export default function StyleReferencesPage() {
 
   return (
     <div>
-      <h2>文体の参考記事</h2>
-      <p>
-        ライティングエージェントが実際にページを取得し、文体・構成のトーンを参考にします(内容の転載はしません)。
-        デザイン(配色・レイアウト)の参考はサイト側の担当範囲なので、ここには含めないでください。
-      </p>
-
       {message && <div className={`message ${message.type}`}>{message.text}</div>}
+
+      {references.length === 0 && (
+        <div className="card">
+          <p style={{ margin: 0 }}>登録されている参考記事はありません。</p>
+        </div>
+      )}
 
       {references.map((ref, i) => (
         <div className="item" key={`${ref.url}-${i}`}>
