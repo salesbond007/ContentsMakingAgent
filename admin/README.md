@@ -14,7 +14,7 @@
 4. Permissions:
    - **Contents**: Read and write
    - **Actions**: Read and write
-   - **Variables**: Read and write(「設定」画面から1日の生成本数・コスト上限・稼働停止/再開を変更する場合に必要。ContentsやActionsとは別の権限区分なので付け忘れに注意)
+   - **Variables**: Read and write(「設定」画面から1日の生成本数・コスト上限を変更する場合に必要。ContentsやActionsとは別の権限区分なので付け忘れに注意)
 5. 発行されたトークン(`github_pat_...`)を控える(この画面専用の管理画面のみに使う。パイプライン本体のGitHub Actionsとは別物)
 
 ### 2. (メールログインを使う場合)Resendのアカウントを作る

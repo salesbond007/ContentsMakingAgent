@@ -127,6 +127,7 @@ export async function dispatchContentWorkflow(inputs: {
   keyword?: string;
   cta_id?: string;
   source_urls?: string;
+  notes?: string;
 }): Promise<void> {
   const { owner, repo } = repoInfo();
   const res = await githubFetch(`/repos/${owner}/${repo}/actions/workflows/daily-content.yml/dispatches`, {
@@ -137,6 +138,7 @@ export async function dispatchContentWorkflow(inputs: {
         keyword: inputs.keyword ?? "",
         cta_id: inputs.cta_id ?? "",
         source_urls: inputs.source_urls ?? "",
+        notes: inputs.notes ?? "",
       },
     }),
   });

@@ -18,12 +18,13 @@ on:
         description: "手動実行: 参考にしたいURL(カンマ区切り、任意)"
         required: false
         type: string
+      notes:
+        description: "手動実行: その他記事に盛り込んで欲しい内容(自由記述、任意)"
+        required: false
+        type: string
 
 jobs:
   generate-and-publish:
-    # 手動実行(workflow_dispatch)は稼働停止中でも常に実行する。
-    # スケジュール実行(cron)は、管理画面の「稼働停止」でPIPELINE_PAUSED=trueにされている間はスキップする。
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.PIPELINE_PAUSED != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -60,6 +61,7 @@ jobs:
           MANUAL_KEYWORD: ${{ github.event.inputs.keyword }}
           MANUAL_CTA_ID: ${{ github.event.inputs.cta_id }}
           MANUAL_SOURCE_URLS: ${{ github.event.inputs.source_urls }}
+          MANUAL_NOTES: ${{ github.event.inputs.notes }}
 
       # 自動実行(cron)の結果はSlackへ即時通知せず、data/pending-notifications.json に蓄積している。
       # data/daily-stats.json は週次レポートが読む日次集計。どちらも変更をコミット・pushして永続化する。

@@ -10,6 +10,7 @@ interface GenerateRequestLogEntry {
   keyword: string | null;
   ctaId: string | null;
   sourceUrls: string | null;
+  notes: string | null;
   requestedAt: string;
 }
 
@@ -24,23 +25,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
   }
 
-  const body = (await request.json()) as { keyword?: string; cta_id?: string; source_urls?: string };
+  const body = (await request.json()) as {
+    keyword?: string;
+    cta_id?: string;
+    source_urls?: string;
+    notes?: string;
+  };
   const keyword = body.keyword?.trim();
   const ctaId = body.cta_id?.trim();
   const sourceUrls = body.source_urls?.trim();
+  const notes = body.notes?.trim();
 
   if (!keyword && !ctaId) {
     return NextResponse.json({ error: "keywordまたはcta_idのいずれかを指定してください" }, { status: 400 });
   }
 
-  await dispatchContentWorkflow({ keyword, cta_id: ctaId, source_urls: sourceUrls });
+  await dispatchContentWorkflow({ keyword, cta_id: ctaId, source_urls: sourceUrls, notes });
 
   // ワークフロー発火が成功した後にログを残す。ログ保存自体の失敗で生成リクエストを失敗扱いにはしない。
   try {
     await appendJsonArrayEntry<GenerateRequestLogEntry>(
       LOG_PATH,
       "requests",
-      { keyword: keyword ?? null, ctaId: ctaId ?? null, sourceUrls: sourceUrls ?? null, requestedAt: new Date().toISOString() },
+      {
+        keyword: keyword ?? null,
+        ctaId: ctaId ?? null,
+        sourceUrls: sourceUrls ?? null,
+        notes: notes ?? null,
+        requestedAt: new Date().toISOString(),
+      },
       "Log manual generate request via admin panel"
     );
   } catch {

@@ -26,7 +26,8 @@ const envSchema = z.object({
 
   COMPETITOR_RSS_FEEDS: z.string().optional(),
 
-  DAILY_ARTICLE_COUNT: z.coerce.number().int().positive().default(3),
+  // 0を指定すると自動生成を行わない(手動生成のみで運用したい場合に使う)。
+  DAILY_ARTICLE_COUNT: z.coerce.number().int().nonnegative().default(3),
   DAILY_API_CALL_CAP: z.coerce.number().int().positive().default(4),
   REVIEW_AUTO_PUBLISH_THRESHOLD: z.coerce.number().int().min(0).max(100).default(80),
   REVIEW_NEEDS_CHECK_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
@@ -36,6 +37,7 @@ const envSchema = z.object({
   MANUAL_KEYWORD: z.string().optional(),
   MANUAL_CTA_ID: z.string().optional(),
   MANUAL_SOURCE_URLS: z.string().optional(),
+  MANUAL_NOTES: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

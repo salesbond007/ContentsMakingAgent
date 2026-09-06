@@ -7,6 +7,7 @@ interface HistoryEntry {
   keyword: string | null;
   ctaId: string | null;
   sourceUrls: string | null;
+  notes: string | null;
   requestedAt: string;
 }
 
@@ -14,6 +15,7 @@ export default function GeneratePage() {
   const [keyword, setKeyword] = useState("");
   const [ctaId, setCtaId] = useState("");
   const [sourceUrls, setSourceUrls] = useState("");
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -41,7 +43,7 @@ export default function GeneratePage() {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keyword, cta_id: ctaId, source_urls: sourceUrls }),
+      body: JSON.stringify({ keyword, cta_id: ctaId, source_urls: sourceUrls, notes }),
     });
 
     setLoading(false);
@@ -59,13 +61,16 @@ export default function GeneratePage() {
     setKeyword("");
     setCtaId("");
     setSourceUrls("");
+    setNotes("");
     loadHistory();
   }
 
   return (
     <div>
       <form onSubmit={handleSubmit} className="card">
-        <label>keyword(記事にしたいキーワード。空欄可)</label>
+        <h2>手動で記事を生成</h2>
+
+        <label>キーワード(記事にしたいキーワード。空欄可)</label>
         <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="例: 生成AIによる契約書レビュー自動化" />
 
         <label>CTA(空欄の場合はAIが記事内容から自動的に判断します)</label>
@@ -77,6 +82,13 @@ export default function GeneratePage() {
             </option>
           ))}
         </select>
+
+        <label>その他盛り込んで欲しい内容(自由記述、任意)</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="例: 中小企業の経営者向けに、比較表を入れて分かりやすく。導入事例に触れてほしい 等"
+        />
 
         <label>参考URL(任意、カンマ区切り)</label>
         <textarea value={sourceUrls} onChange={(e) => setSourceUrls(e.target.value)} placeholder="https://example.com/a, https://example.com/b" />
@@ -103,6 +115,12 @@ export default function GeneratePage() {
                 {h.ctaId && (
                   <>
                     CTA: <span className="badge">{h.ctaId}</span>
+                    <br />
+                  </>
+                )}
+                {h.notes && (
+                  <>
+                    盛り込んで欲しい内容: {h.notes}
                     <br />
                   </>
                 )}

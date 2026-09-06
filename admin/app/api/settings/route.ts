@@ -10,16 +10,14 @@ const DEFAULTS = {
 };
 
 export async function GET() {
-  const [dailyArticleCount, dailyApiCallCap, pipelinePaused] = await Promise.all([
+  const [dailyArticleCount, dailyApiCallCap] = await Promise.all([
     getRepoVariable("DAILY_ARTICLE_COUNT"),
     getRepoVariable("DAILY_API_CALL_CAP"),
-    getRepoVariable("PIPELINE_PAUSED"),
   ]);
 
   return NextResponse.json({
     dailyArticleCount: dailyArticleCount ?? DEFAULTS.DAILY_ARTICLE_COUNT,
     dailyApiCallCap: dailyApiCallCap ?? DEFAULTS.DAILY_API_CALL_CAP,
-    paused: pipelinePaused === "true",
   });
 }
 
@@ -33,8 +31,9 @@ export async function POST(request: NextRequest) {
   const articleCount = Number(body.dailyArticleCount);
   const apiCallCap = Number(body.dailyApiCallCap);
 
-  if (!Number.isInteger(articleCount) || articleCount < 1 || articleCount > 20) {
-    return NextResponse.json({ error: "1日の記事数は1〜20の整数で指定してください" }, { status: 400 });
+  // 0 = 自動生成なし(手動生成のみ運用したい場合に使う)。
+  if (!Number.isInteger(articleCount) || articleCount < 0 || articleCount > 20) {
+    return NextResponse.json({ error: "1日の記事数は0〜20の整数で指定してください(0で自動生成なし)" }, { status: 400 });
   }
   if (!Number.isInteger(apiCallCap) || apiCallCap < 1 || apiCallCap > 20) {
     return NextResponse.json({ error: "コスト上限は1〜20の整数で指定してください" }, { status: 400 });

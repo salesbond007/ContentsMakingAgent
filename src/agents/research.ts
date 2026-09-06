@@ -95,10 +95,11 @@ export async function buildManualTopic(
   claude: Anthropic,
   manualKeyword: string | undefined,
   manualSourceUrls: string[],
-  forcedCta: CtaOption | undefined
+  forcedCta: CtaOption | undefined,
+  notes?: string
 ): Promise<Topic> {
   if (manualKeyword) {
-    return { keyword: manualKeyword, sourceUrls: manualSourceUrls, source: "manual" };
+    return { keyword: manualKeyword, sourceUrls: manualSourceUrls, source: "manual", notes };
   }
 
   if (forcedCta) {
@@ -112,7 +113,7 @@ export async function buildManualTopic(
         `このCTAへ自然に読者を誘導できる記事キーワード・テーマを1つ考えてください。\n` +
         `出力形式: { "keyword": "..." }`,
     });
-    return { keyword: suggestion.keyword, sourceUrls: manualSourceUrls, source: "manual" };
+    return { keyword: suggestion.keyword, sourceUrls: manualSourceUrls, source: "manual", notes };
   }
 
   throw new Error("手動実行にはキーワードまたはCTA IDのいずれかを指定してください");

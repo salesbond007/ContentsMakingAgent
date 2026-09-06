@@ -5,10 +5,8 @@ import { useEffect, useState } from "react";
 export default function SettingsPage() {
   const [dailyArticleCount, setDailyArticleCount] = useState("3");
   const [dailyApiCallCap, setDailyApiCallCap] = useState("4");
-  const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [togglingPause, setTogglingPause] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   function loadSettings() {
@@ -17,7 +15,6 @@ export default function SettingsPage() {
       .then((data) => {
         setDailyArticleCount(data.dailyArticleCount ?? "3");
         setDailyApiCallCap(data.dailyApiCallCap ?? "4");
-        setPaused(!!data.paused);
       });
   }
 
@@ -47,80 +44,17 @@ export default function SettingsPage() {
     setMessage({ type: "success", text: "保存しました。次回の自動実行(毎日07:00 JST)から反映されます。" });
   }
 
-  async function togglePause() {
-    setTogglingPause(true);
-    setMessage(null);
-
-    const nextPaused = !paused;
-    const res = await fetch("/api/settings/pause", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paused: nextPaused }),
-    });
-
-    setTogglingPause(false);
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setMessage({ type: "error", text: body.error ?? "切り替えに失敗しました" });
-      return;
-    }
-
-    setPaused(nextPaused);
-    setMessage({
-      type: "success",
-      text: nextPaused
-        ? "生成方式を「手動」に切り替えました(自動実行は停止)。「記事を生成」からの手動生成は引き続き使えます。"
-        : "生成方式を「全自動」に切り替えました。次回の毎日07:00 JSTから通常運転に戻ります。",
-    });
-  }
-
   if (loading) return <p>読み込み中...</p>;
 
   return (
     <div>
-      <div className="card">
-        <div className="item-header">
-          <div>
-            <h2 style={{ marginBottom: 4 }}>生成方式</h2>
-            <p style={{ margin: 0 }}>
-              現在:{" "}
-              <span className="badge" style={paused ? { background: "#fdecea", color: "#b00020" } : undefined}>
-                {paused ? "手動" : "全自動"}
-              </span>
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className={paused ? undefined : "secondary"}
-              onClick={() => paused && togglePause()}
-              disabled={togglingPause || !paused}
-            >
-              全自動
-            </button>
-            <button
-              className={paused ? "secondary" : "danger"}
-              onClick={() => !paused && togglePause()}
-              disabled={togglingPause || paused}
-            >
-              手動(強制停止)
-            </button>
-          </div>
-        </div>
-        <p style={{ marginBottom: 0 }}>
-          「全自動」中は毎日07:00 JSTに自動で記事生成・公開まで実行されます。「手動(強制停止)」に切り替えると
-          自動実行だけが止まります(＝稼働停止と同じ意味)。「記事を生成」からの手動実行はどちらのモードでも使えます。
-        </p>
-        {message && <div className={`message ${message.type}`} style={{ marginTop: 12 }}>{message.text}</div>}
-      </div>
-
       <form onSubmit={handleSubmit} className="card">
         <h2>自動実行の設定</h2>
 
-        <label>1日あたりの生成本数</label>
+        <label>1日あたりの生成本数(0を指定すると自動生成を行いません)</label>
         <input
           type="number"
-          min={1}
+          min={0}
           max={20}
           value={dailyArticleCount}
           onChange={(e) => setDailyArticleCount(e.target.value)}
@@ -135,7 +69,8 @@ export default function SettingsPage() {
           onChange={(e) => setDailyApiCallCap(e.target.value)}
         />
         <p style={{ marginBottom: 0 }}>
-          生成本数がコスト上限を超える場合は、上限まで自動的に絞られます。
+          生成本数がコスト上限を超える場合は、上限まで自動的に絞られます。0を指定すると、毎日07:00 JSTの
+          自動生成自体を行わなくなります(「記事を生成」からの手動生成は引き続き使えます)。
         </p>
 
         {message && <div className={`message ${message.type}`}>{message.text}</div>}

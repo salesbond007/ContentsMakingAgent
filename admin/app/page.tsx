@@ -3,12 +3,12 @@ export default function DashboardPage() {
     <div>
       <div className="stat-grid">
         <div className="stat-card">
-          <div className="stat-label">実行頻度</div>
-          <div className="stat-value">毎日 06:00</div>
+          <div className="stat-label">自動実行</div>
+          <div className="stat-value">毎日 07:00</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">生成方式</div>
-          <div className="stat-value">全自動</div>
+          <div className="stat-label">手動生成</div>
+          <div className="stat-value">いつでも可</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">査読ゲート</div>
@@ -24,6 +24,12 @@ export default function DashboardPage() {
           <a href="/generate"><button>開く</button></a>
         </div>
         <div className="card">
+          <div className="card-icon">📊</div>
+          <h2>数値解析</h2>
+          <p>公開記事数の推移(日次・月次)を確認します。</p>
+          <a href="/analytics"><button className="secondary">開く</button></a>
+        </div>
+        <div className="card">
           <div className="card-icon">🔗</div>
           <h2>CTA管理</h2>
           <p>記事末尾に挿入するCTA・内部リンクの追加・編集・削除を行います。</p>
@@ -36,9 +42,15 @@ export default function DashboardPage() {
           <a href="/style-references"><button className="secondary">開く</button></a>
         </div>
         <div className="card">
+          <div className="card-icon">🖼</div>
+          <h2>サムネイル</h2>
+          <p>アイキャッチ画像生成のデザイン参考画像を設定します。</p>
+          <a href="/thumbnail"><button className="secondary">開く</button></a>
+        </div>
+        <div className="card">
           <div className="card-icon">⚙</div>
           <h2>設定</h2>
-          <p>1日あたりの生成本数・コスト上限を調整します。</p>
+          <p>1日あたりの生成本数(0で自動生成なし)・コスト上限を調整します。</p>
           <a href="/settings"><button className="secondary">開く</button></a>
         </div>
       </div>

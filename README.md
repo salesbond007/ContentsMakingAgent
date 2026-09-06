@@ -83,8 +83,9 @@ CTA一覧と同様、追加・削除はこのJSONファイルを直接編集す�
 ## 手動実行（管理画面 / GitHub Actions）
 
 非エンジニアでも使えるよう、[`admin/`](./admin/README.md) に専用の管理画面(Next.js、Vercelにデプロイ)がある。
-「記事を生成」ページからキーワード・CTA(ドロップダウン)・参考URLを指定して手動生成をリクエストでき、
-「数値解析」ページで公開数の推移、「設定」ページで生成方式(全自動/手動)の切り替えができる。
+「記事を生成」ページからキーワード・CTA(ドロップダウン)・その他盛り込んで欲しい内容(自由記述)・参考URLを
+指定して手動生成をリクエストでき、「数値解析」ページで公開数の推移、「設定」ページで1日あたりの自動生成本数
+(0にすると自動生成なし)・コスト上限を調整できる。
 
 管理画面を使わない場合、GitHub Actionsの「Run workflow」画面からも直接同じことができる。
 「Actions」タブ →「Daily Content Pipeline」→「Run workflow」を開くと、以下の入力欄が出る。
@@ -92,10 +93,12 @@ CTA一覧と同様、追加・削除はこのJSONファイルを直接編集す�
 - **keyword**: 記事にしたいキーワードを直接指定する。指定すると情報収集エージェントをスキップし、そのキーワードだけで1本生成する
 - **cta_id**: 使いたいCTAの`id`（[`config/ctas.json`](./config/ctas.json)参照）を指定すると、そのCTAを必ず使う。keywordを空にしてcta_idだけ指定すると、そのCTAへ自然につながる記事テーマをAIが逆算して1本提案・生成する（「CTAから逆算」運用）
 - **source_urls**: 参考にしてほしいURL（カンマ区切り、任意）
+- **notes**: その他記事に盛り込んで欲しい内容(自由記述、任意)。ライティングエージェントへの追加指示として渡る
 
-3つとも空欄のまま実行すれば、通常の自動収集(1日3本分の設定はそのまま)で実行される。
+すべて空欄のまま実行すれば、通常の自動収集(1日あたりの生成本数の設定はそのまま)で実行される。
 毎日07:00 JSTの自動cronはこれらの入力を使わず、常に自動収集モードで動く(管理画面の「設定」で
-生成方式を「手動」に切り替えている間はスキップされる。手動実行(workflow_dispatch)はどちらでも動く)。
+1日あたりの生成本数を0にしている間は、ジョブ自体は起動するがAI呼び出し・記事生成は一切行わず終了する。
+手動実行(workflow_dispatch)は本数設定に関わらずいつでも動く)。
 
 生成本数の推移は管理画面の「数値解析」ページで確認できる。CTAのクリック率・記事の閲覧率などのアクセス解析は
 優先度が低いため後回し(将来的にサイト側にGA4等の計測を入れたうえで別途対応する想定)。
@@ -158,14 +161,14 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 
 ## GitHub Actions
 
-- `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（管理画面の「設定」で`PIPELINE_PAUSED`変数が`true`の間はスケジュール実行のみスキップ、手動実行は常に動く）。
+- `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（`DAILY_ARTICLE_COUNT`が0の間はAI呼び出しを行わず終了、手動実行は本数設定に関わらず常に動く）。
 - `.github/workflows/daily-notify.yml`: 毎日21:00 JSTに、その日の自動実行結果をまとめて1通のSlackメッセージとして送信する（自動実行はリアルタイム通知しない。手動実行は従来通り即時通知）。
 - `.github/workflows/weekly-report.yml`: 毎週月曜21:10 JSTに、直近7日間の集計とリライト候補をSlackに送信する。
 
 以下をリポジトリのSecrets/Variablesに登録すること:
 
 - Secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MICROCMS_SERVICE_DOMAIN`, `MICROCMS_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_FOLDER_ID`
-- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`, `DAILY_API_CALL_CAP`, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`, `PIPELINE_PAUSED`(管理画面から自動更新), `REWRITE_THRESHOLD_DAYS`(任意、既定90)
+- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`（管理画面の「設定」から自動更新、0で自動生成なし）, `DAILY_API_CALL_CAP`（同上）, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`, `REWRITE_THRESHOLD_DAYS`(任意、既定90)
 
 ## CI
 

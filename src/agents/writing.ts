@@ -118,7 +118,9 @@ export async function writeArticle(
     prompt:
       `以下のキーワード・参考ソースをもとに記事を執筆してください。\n\n` +
       `キーワード: ${topic.keyword}\n` +
-      `参考ソースURL: ${topic.sourceUrls.join(", ") || "なし"}\n\n` +
+      `参考ソースURL: ${topic.sourceUrls.join(", ") || "なし"}\n` +
+      (topic.notes ? `記事に必ず盛り込んでほしい内容(依頼者からの指定): ${topic.notes}\n` : "") +
+      `\n` +
       (searchIntent
         ? `検索意図分析の結果:\n` +
           `- 想定読者・悩み: ${searchIntent.intentSummary}\n` +

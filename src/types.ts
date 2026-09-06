@@ -13,6 +13,8 @@ export interface Topic {
   sourceUrls: string[];
   source: TopicSource;
   keywordRecordId?: string;
+  /** 手動実行時に指定された、記事に必ず盛り込んでほしい内容(自由記述)。 */
+  notes?: string;
 }
 
 /**

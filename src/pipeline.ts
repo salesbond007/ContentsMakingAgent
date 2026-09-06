@@ -57,13 +57,17 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const topic = await buildManualTopic(claude, env.MANUAL_KEYWORD, manualSourceUrls, forcedCta);
+    const topic = await buildManualTopic(claude, env.MANUAL_KEYWORD, manualSourceUrls, forcedCta, env.MANUAL_NOTES);
     topics = [topic];
     await notifySlack(
       env,
       `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します` +
         (forcedCta ? `(CTA: ${forcedCta.label})` : "")
     );
+  } else if (env.DAILY_ARTICLE_COUNT === 0) {
+    // 1日あたりの生成本数が0(=自動生成なし)に設定されている場合は、AI呼び出しを一切行わず終了する。
+    logger.info("DAILY_ARTICLE_COUNTが0のため、本日の自動生成をスキップします");
+    return { startedAt, finishedAt: new Date().toISOString(), results: [] };
   } else {
     const articleCount = Math.min(env.DAILY_ARTICLE_COUNT, env.DAILY_API_CALL_CAP);
     if (env.DAILY_ARTICLE_COUNT > env.DAILY_API_CALL_CAP) {
