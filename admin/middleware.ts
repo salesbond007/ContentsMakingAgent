@@ -4,7 +4,8 @@ import { COOKIE_NAME, verifySessionToken } from "./lib/auth";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/login" || pathname === "/api/login" || pathname.startsWith("/_next")) {
+  const publicPaths = ["/login", "/api/login", "/api/auth/request-link", "/api/auth/verify"];
+  if (publicPaths.includes(pathname) || pathname.startsWith("/_next")) {
     return NextResponse.next();
   }
 

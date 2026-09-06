@@ -11,16 +11,21 @@ import { reviewArticle } from "./agents/review.js";
 import { publishArticle } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
 import { loadStyleReferences } from "./clients/styleReferences.js";
+import { appendPendingNotification } from "./clients/notificationLog.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.js";
 
 /**
- * 06-スケジューラ: GitHub Actions cronから1日1回起動され、工程01〜05を記事本数分ループ実行する。
+ * 06-スケジューラ: GitHub Actions cronから1日1回(07:00 JST)起動され、工程01〜05を記事本数分ループ実行する。
  * コスト上限（1日あたりのAPI呼び出し記事数）を超える場合は実行を停止しSlackに通知する。
  *
  * MANUAL_KEYWORD / MANUAL_CTA_ID が設定されている場合は、workflow_dispatchからの手動実行として
  * 通常の自動キーワード収集をスキップし、指定されたキーワード・CTAで1本だけ記事を生成する。
+ *
+ * 通知方針: 手動実行はその場でSlackに結果を通知する（管理画面から見て分かりやすくするため）。
+ * 一方、毎日の自動実行はリアルタイム通知せず、結果をdata/pending-notifications.jsonに蓄積するだけにし、
+ * 別ワークフロー(21:00 JST)がまとめて1通のSlackメッセージとして送信する。
  */
 export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const startedAt = new Date().toISOString();
@@ -39,6 +44,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   }
 
   let topics: Topic[];
+  let costCapNote: string | undefined;
   if (isManualRun) {
     const manualSourceUrls = (env.MANUAL_SOURCE_URLS ?? "")
       .split(",")
@@ -54,12 +60,8 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   } else {
     const articleCount = Math.min(env.DAILY_ARTICLE_COUNT, env.DAILY_API_CALL_CAP);
     if (env.DAILY_ARTICLE_COUNT > env.DAILY_API_CALL_CAP) {
-      await notifySlack(
-        env,
-        `⚠️ コスト上限(${env.DAILY_API_CALL_CAP}本)により、本日の実行数を${env.DAILY_ARTICLE_COUNT}本から${articleCount}本に制限しました。`
-      );
+      costCapNote = `⚠️ コスト上限(${env.DAILY_API_CALL_CAP}本)により、本日の実行数を${env.DAILY_ARTICLE_COUNT}本から${articleCount}本に制限しました。`;
     }
-    await notifySlack(env, `▶️ BondAIメディア コンテンツ生成パイプラインを開始します（${articleCount}本予定）`);
     topics = await collectTopics(env, claude, microcms, articleCount);
   }
 
@@ -118,38 +120,43 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   }
 
   const finishedAt = new Date().toISOString();
-  await notifyCompletion(env, results);
+  const digest = buildCompletionDigest(results, costCapNote);
+
+  if (isManualRun) {
+    // 手動実行は管理画面から見て分かりやすいよう、その場で通知する。
+    await notifySlack(env, digest);
+  } else {
+    // 自動実行はリアルタイム通知せず蓄積し、21:00 JSTの別ワークフローがまとめて送信する。
+    appendPendingNotification(digest, env.PENDING_NOTIFICATIONS_PATH);
+  }
 
   return { startedAt, finishedAt, results };
 }
 
-async function notifyCompletion(env: Env, results: PipelineArticleResult[]): Promise<void> {
-  const published = results.filter((r) => r.status === "published").length;
-  const needsReview = results.filter((r) => r.status === "needs-review");
-  const rejected = results.filter((r) => r.status === "rejected").length;
-  const errors = results.filter((r) => r.status === "skipped-error");
+function buildCompletionDigest(results: PipelineArticleResult[], costCapNote?: string): string {
+  const lines: string[] = [];
+  if (costCapNote) lines.push(costCapNote, "");
 
-  const lines = [
-    `✅ パイプライン完了: 自動公開${published}件 / 要確認${needsReview.length}件 / 差し戻し${rejected}件 / エラー${errors.length}件`,
-  ];
-
-  if (needsReview.length > 0) {
-    lines.push("");
-    lines.push("📝 要確認キュー:");
-    for (const r of needsReview) {
+  for (const r of results) {
+    const title = r.draft?.title ?? r.topic.keyword;
+    if (r.status === "published") {
+      lines.push(`✅ 記事：記事公開しました - ${title}`);
+    } else if (r.status === "needs-review") {
       lines.push(
-        `- ${r.draft?.title ?? r.topic.keyword} (score: ${r.review?.total}) — ${r.review?.comments.join(" / ")}`
+        `📝 記事：下書きに入れました - ${title}（要確認、スコア: ${r.review?.total}） — ${r.review?.comments.join(" / ") ?? ""}`
       );
+    } else if (r.status === "rejected") {
+      lines.push(`↩️ 記事：差し戻しました - ${title}（スコア: ${r.review?.total}）`);
+    } else {
+      lines.push(`🚨 記事：エラーでスキップ - ${r.topic.keyword}（${r.error}）`);
     }
   }
 
-  if (errors.length > 0) {
-    lines.push("");
-    lines.push("🚨 エラーでスキップした記事:");
-    for (const r of errors) {
-      lines.push(`- ${r.topic.keyword}: ${r.error}`);
-    }
-  }
+  const published = results.filter((r) => r.status === "published").length;
+  const needsReview = results.filter((r) => r.status === "needs-review").length;
+  const rejected = results.filter((r) => r.status === "rejected").length;
+  const errors = results.filter((r) => r.status === "skipped-error").length;
+  lines.push("", `合計: 公開${published}件 / 下書き${needsReview}件 / 差し戻し${rejected}件 / エラー${errors}件`);
 
-  await notifySlack(env, lines.join("\n"));
+  return lines.join("\n");
 }

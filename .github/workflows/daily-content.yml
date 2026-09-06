@@ -2,8 +2,8 @@ name: Daily Content Pipeline
 
 on:
   schedule:
-    # 06:00 JST = 21:00 UTC(前日)。運用開始後に配信時間を調整すること。
-    - cron: "0 21 * * *"
+    # 07:00 JST = 22:00 UTC(前日)。
+    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       keyword:
@@ -21,8 +21,13 @@ on:
 
 jobs:
   generate-and-publish:
+    # 手動実行(workflow_dispatch)は稼働停止中でも常に実行する。
+    # スケジュール実行(cron)は、管理画面の「稼働停止」でPIPELINE_PAUSED=trueにされている間はスキップする。
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.PIPELINE_PAUSED != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -55,3 +60,16 @@ jobs:
           MANUAL_KEYWORD: ${{ github.event.inputs.keyword }}
           MANUAL_CTA_ID: ${{ github.event.inputs.cta_id }}
           MANUAL_SOURCE_URLS: ${{ github.event.inputs.source_urls }}
+
+      # 自動実行(cron)の結果はSlackへ即時通知せず、data/pending-notifications.json に蓄積している。
+      # 変更をコミット・pushして、21:00 JSTの通知ワークフローが読み取れるようにする。
+      - name: Persist pending notifications
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          if [ -n "$(git status --porcelain data/pending-notifications.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/pending-notifications.json
+            git commit -m "Record pending notifications from $(date -u +%Y-%m-%d) run"
+            git push
+          fi

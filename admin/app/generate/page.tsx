@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface HistoryEntry {
+  keyword: string | null;
+  ctaId: string | null;
+  sourceUrls: string | null;
+  requestedAt: string;
+}
 
 export default function GeneratePage() {
   const [keyword, setKeyword] = useState("");
@@ -8,6 +15,18 @@ export default function GeneratePage() {
   const [sourceUrls, setSourceUrls] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  function loadHistory() {
+    return fetch("/api/generate")
+      .then((r) => r.json())
+      .then((data) => setHistory(data.requests ?? []));
+  }
+
+  useEffect(() => {
+    loadHistory().finally(() => setHistoryLoading(false));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +54,7 @@ export default function GeneratePage() {
     setKeyword("");
     setCtaId("");
     setSourceUrls("");
+    loadHistory();
   }
 
   return (
@@ -55,6 +75,39 @@ export default function GeneratePage() {
           {loading ? "リクエスト中..." : "生成をリクエスト"}
         </button>
       </form>
+
+      <div className="card">
+        <h2>リクエスト履歴</h2>
+        {historyLoading ? (
+          <p>読み込み中...</p>
+        ) : history.length === 0 ? (
+          <p style={{ margin: 0 }}>まだ手動生成のリクエストはありません。</p>
+        ) : (
+          history.map((h, i) => (
+            <div className="item" key={i}>
+              <p style={{ margin: 0 }}>
+                <strong>{h.keyword || "(キーワード未指定・CTAから逆算)"}</strong>
+                <br />
+                {h.ctaId && (
+                  <>
+                    CTA: <span className="badge">{h.ctaId}</span>
+                    <br />
+                  </>
+                )}
+                {h.sourceUrls && (
+                  <>
+                    参考URL: {h.sourceUrls}
+                    <br />
+                  </>
+                )}
+                <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                  {new Date(h.requestedAt).toLocaleString("ja-JP")}
+                </span>
+              </p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

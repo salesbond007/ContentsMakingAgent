@@ -12,6 +12,7 @@ const envSchema = z.object({
   MICROCMS_FIELD_MAP_PATH: z.string().optional(),
   CTA_CONFIG_PATH: z.string().optional(),
   STYLE_REFERENCES_PATH: z.string().optional(),
+  PENDING_NOTIFICATIONS_PATH: z.string().optional(),
 
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 

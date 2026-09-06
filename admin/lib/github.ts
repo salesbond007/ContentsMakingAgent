@@ -89,6 +89,39 @@ export async function setRepoVariable(name: string, value: string): Promise<void
   }
 }
 
+/**
+ * リポジトリ内のJSON配列ログファイルに1件追記する。ファイルが存在しない場合は新規作成する。
+ * 配列が長くなりすぎないよう、末尾maxEntries件だけを保持する。
+ */
+export async function appendJsonArrayEntry<T>(
+  path: string,
+  key: string,
+  entry: T,
+  message: string,
+  maxEntries = 200
+): Promise<void> {
+  const { owner, repo } = repoInfo();
+  const existing = await getRepoJsonFile<Record<string, T[]>>(path);
+  const data = existing?.data ?? ({} as Record<string, T[]>);
+  const arr = Array.isArray(data[key]) ? data[key] : [];
+  arr.push(entry);
+  data[key] = arr.slice(-maxEntries);
+
+  if (existing) {
+    await updateRepoJsonFile(path, data, existing.sha, message);
+    return;
+  }
+
+  const content = Buffer.from(JSON.stringify(data, null, 2) + "\n", "utf-8").toString("base64");
+  const res = await githubFetch(`/repos/${owner}/${repo}/contents/${path}`, {
+    method: "PUT",
+    body: JSON.stringify({ message, content, branch: "main" }),
+  });
+  if (!res.ok) {
+    throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+  }
+}
+
 /** Daily Content Pipelineのworkflow_dispatchを手動発火する。 */
 export async function dispatchContentWorkflow(inputs: {
   keyword?: string;

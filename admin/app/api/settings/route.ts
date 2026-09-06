@@ -9,14 +9,16 @@ const DEFAULTS = {
 };
 
 export async function GET() {
-  const [dailyArticleCount, dailyApiCallCap] = await Promise.all([
+  const [dailyArticleCount, dailyApiCallCap, pipelinePaused] = await Promise.all([
     getRepoVariable("DAILY_ARTICLE_COUNT"),
     getRepoVariable("DAILY_API_CALL_CAP"),
+    getRepoVariable("PIPELINE_PAUSED"),
   ]);
 
   return NextResponse.json({
     dailyArticleCount: dailyArticleCount ?? DEFAULTS.DAILY_ARTICLE_COUNT,
     dailyApiCallCap: dailyApiCallCap ?? DEFAULTS.DAILY_API_CALL_CAP,
+    paused: pipelinePaused === "true",
   });
 }
 
