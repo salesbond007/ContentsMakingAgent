@@ -1,5 +1,0 @@
-{
-  "_comment": "アイキャッチ画像生成の参考画像。referenceImageUrlを設定すると、gpt-image-1の画像編集APIでそのデザイン(配色・構図・雰囲気)に寄せて新しい画像を生成する。管理画面の「サムネイル」ページからも編集できる。",
-  "referenceImageUrl": "",
-  "note": ""
-}

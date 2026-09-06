@@ -1,0 +1,4 @@
+{
+  "_comment": "アイキャッチ・図解生成の参考にする画像素材の一覧。用途(useCase)は chart(グラフ) / seminar(セミナー誘致) / thumbnail(通常記事のサムネ)。参考画像の実体はGoogleドライブに格納する運用とし、格納先: https://drive.google.com/drive/folders/1X0XVnsGNg6QewxbFTbYd8MFkaKmQnBvG?usp=sharing 。urlにはそのフォルダ内の画像への共有リンク、または別途アップロードした画像の直接URLを登録する。管理画面の「画像」ページからも編集できる。",
+  "images": []
+}

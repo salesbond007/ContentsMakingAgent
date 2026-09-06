@@ -1,4 +1,4 @@
-// パイプライン側(src/clients/ctas.ts, src/clients/styleReferences.ts)の型と同じ形。
+// パイプライン側(src/clients/ctas.ts, src/clients/referenceMaterials.ts 等)の型と同じ形。
 // 管理画面はパイプラインのソースを直接importせず、config/*.jsonの構造だけを共有する。
 
 export interface CtaOption {
@@ -15,21 +15,39 @@ export interface CtasFile {
   ctas: CtaOption[];
 }
 
-export interface StyleReference {
+export type ReferenceMaterialType = "style" | "service";
+
+export interface ReferenceMaterial {
+  id: string;
+  type: ReferenceMaterialType;
   label: string;
+  urls: string[];
+  memo: string;
+}
+
+export interface ReferenceMaterialsFile {
+  _comment?: string;
+  materials: ReferenceMaterial[];
+}
+
+export type ImageUseCase = "chart" | "seminar" | "thumbnail";
+
+export interface ImageEntry {
+  id: string;
+  title: string;
   url: string;
-  note: string;
+  useCase: ImageUseCase;
+  note?: string;
 }
 
-export interface StyleReferencesFile {
+export interface ImagesFile {
   _comment?: string;
-  references: StyleReference[];
+  images: ImageEntry[];
 }
 
-export interface ThumbnailStyleFile {
+export interface GlobalSettingsFile {
   _comment?: string;
-  referenceImageUrl: string;
-  note: string;
+  mustNotViolate: string;
 }
 
 export interface TargetProfile {

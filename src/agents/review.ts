@@ -37,7 +37,8 @@ export async function reviewArticle(
   draft: ArticleDraft,
   env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">,
   existingArticleTitles: string[] = [],
-  ngWords: string[] = []
+  ngWords: string[] = [],
+  globalMustNotViolate?: string
 ): Promise<ReviewResult> {
   const ngWordHits = findNgWordHits(draft.body, ngWords);
 
@@ -49,7 +50,11 @@ export async function reviewArticle(
       "   出典が無い、または出典で確認できない重要な断定は減点。判断に迷う数値・固有名詞はweb_searchで裏付けを取ってよい。\n" +
       "2. リスク表現: 「必ず」「保証します」等の断定的表現、誇大な効果訴求が無いか。" +
       "薬機法・景表法の観点でグレーな効果効能の断定表現が無いかも確認すること。\n" +
-      "3. ブランド・トンマナ: BtoBメディアとして落ち着いた文体・語彙になっているか。\n" +
+      "3. ブランド・トンマナ: BtoBメディアとして落ち着いた文体・語彙になっているか。" +
+      (globalMustNotViolate
+        ? `また、以下の全体設定に違反・逸脱していないかも必ず確認し、違反していれば大きく減点すること。\n` +
+          `【全体設定】${globalMustNotViolate}\n`
+        : "") +
       "4. 剽窃・重複: 出典の丸写しや不自然な類似表現が無いか。加えて「既存の自社記事タイトル一覧」と\n" +
       "   テーマ・切り口が実質的に重複していないかも確認し、重複していれば減点すること。\n" +
       "カテゴリの妥当性は採点対象に含めないこと（ライティング側で確定済み）。" +

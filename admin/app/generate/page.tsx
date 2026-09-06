@@ -42,8 +42,8 @@ export default function GeneratePage() {
       .then((data) => setTargets(data.targets ?? []));
   }, []);
 
-  function toggleCta(id: string) {
-    setCtaIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  function handleCtaSelectChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setCtaIds(Array.from(e.target.selectedOptions).map((o) => o.value));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -101,19 +101,27 @@ export default function GeneratePage() {
         {ctas.length === 0 ? (
           <p style={{ marginTop: 4 }}>登録されているCTAはありません。</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-            {ctas.map((c) => (
-              <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, textTransform: "none", fontWeight: 400, margin: 0 }}>
-                <input
-                  type="checkbox"
-                  style={{ width: "auto" }}
-                  checked={ctaIds.includes(c.id)}
-                  onChange={() => toggleCta(c.id)}
-                />
-                {c.label}
-              </label>
-            ))}
-          </div>
+          <>
+            <select multiple value={ctaIds} onChange={handleCtaSelectChange} size={Math.min(ctas.length, 5)}>
+              {ctas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p style={{ marginTop: 4, marginBottom: 0, color: "var(--muted)", fontSize: 13 }}>
+              Ctrl(Macは⌘)キーを押しながらクリックすると複数選択できます。
+            </p>
+            {ctaIds.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {ctaIds.map((id) => (
+                  <span className="badge" key={id}>
+                    {ctas.find((c) => c.id === id)?.label ?? id}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         <label>ターゲット(登録済みプロフィールから選択、または自由記述。両方空欄可)</label>

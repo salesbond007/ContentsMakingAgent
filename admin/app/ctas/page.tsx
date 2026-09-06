@@ -80,20 +80,22 @@ export default function CtasPage() {
       {ctas.map((cta) => (
         <div className="item" key={cta.id}>
           <div className="item-header">
-            <strong>{cta.label}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <strong style={{ fontSize: 16 }}>{cta.label}</strong>
+              <span className="badge">{cta.id}</span>
+            </div>
             <button className="danger" onClick={() => removeCta(cta.id)} disabled={saving}>
               削除
             </button>
           </div>
-          <p style={{ margin: "6px 0" }}>
-            <span className="badge">{cta.id}</span>
-            <br /><br />
-            URL: <a href={cta.url} target="_blank" rel="noreferrer">{cta.url}</a>
-            <br />
-            ボタン文言: {cta.buttonText}
-            <br />
-            使う場面: {cta.useWhen}
-          </p>
+          <div className="cta-detail-grid">
+            <span className="cta-detail-label">URL</span>
+            <a href={cta.url} target="_blank" rel="noreferrer" className="cta-url-chip">{cta.url}</a>
+            <span className="cta-detail-label">ボタン文言</span>
+            <span>{cta.buttonText}</span>
+            <span className="cta-detail-label">使う場面</span>
+            <span>{cta.useWhen}</span>
+          </div>
         </div>
       ))}
 

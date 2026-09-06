@@ -382,6 +382,45 @@ button:disabled {
   border: 1px solid var(--brand);
 }
 
+.cta-detail-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  row-gap: 8px;
+  column-gap: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  align-items: center;
+}
+
+.cta-detail-label {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cta-url-chip {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--brand-light);
+  color: var(--brand) !important;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--brand);
+  word-break: break-all;
+  text-decoration: none;
+}
+
+.cta-url-chip:hover {
+  background: var(--brand);
+  color: white !important;
+}
+
 /* --- Dashboard --- */
 
 .stat-grid {

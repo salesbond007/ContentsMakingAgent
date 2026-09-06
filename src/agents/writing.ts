@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { askClaudeForJson } from "../clients/claude.js";
 import type { CtaOption } from "../clients/ctas.js";
-import type { StyleReference } from "../clients/styleReferences.js";
+import type { ReferenceMaterial } from "../clients/referenceMaterials.js";
 import type { ArticleDraft, FigureSpec, SearchIntentInsight, Topic } from "../types.js";
 
 export interface InternalLinkCandidate {
@@ -55,22 +55,42 @@ export async function writeArticle(
   existingCategories: string[] = [],
   ctaOptions: CtaOption[] = [],
   forcedCtaId?: string,
-  styleReferences: StyleReference[] = [],
+  referenceMaterials: ReferenceMaterial[] = [],
   searchIntent?: SearchIntentInsight,
-  internalLinkCandidates: InternalLinkCandidate[] = []
+  internalLinkCandidates: InternalLinkCandidate[] = [],
+  globalMustNotViolate?: string
 ): Promise<ArticleDraft> {
+  const styleMaterials = referenceMaterials.filter((m) => m.type === "style");
+  const serviceMaterials = referenceMaterials.filter((m) => m.type === "service");
+
   const output = await askClaudeForJson<WritingLlmOutput>(claude, {
     system:
+      (globalMustNotViolate
+        ? "【絶対厳守】以下の全体設定は、どのような理由があっても絶対に違反・逸脱してはならない最優先ルールです。" +
+          "本文・タイトル・トーンのすべてにおいてこの前提を守ること。\n" +
+          `${globalMustNotViolate}\n\n`
+        : "") +
       "あなたはBtoB向けAIメディア「BondAIメディア」のライターです。" +
       "断定的な保証表現（『必ず』『保証します』等）や誇大な効果訴求を避け、" +
       "根拠のある落ち着いたトーンで執筆してください。" +
-      (styleReferences.length > 0
+      (styleMaterials.length > 0
         ? "文体・構成のお手本として指定された参考記事があります。必ずweb_fetchツールで実際に取得し、" +
           "見出しの立て方・段落構成・語り口・言葉遣いのトーンといった「構造とトーン」だけを参考にしてください。" +
           "参考記事は業界・商材が全く異なる場合があるため、書かれている内容・事実・数値・固有名詞・具体例を" +
           "一切転載・流用してはいけません（あくまで型・雰囲気の参考であり、中身はこの記事のテーマに即して" +
           "ゼロから執筆すること）。\n" +
-          styleReferences.map((r) => `- ${r.url}（${r.note}）`).join("\n") +
+          styleMaterials
+            .map((m) => `- ${m.label}: ${m.urls.join(", ")}${m.memo ? `（${m.memo}）` : ""}`)
+            .join("\n") +
+          "\n"
+        : "") +
+      (serviceMaterials.length > 0
+        ? "自社サービスに関する正確な情報源が登録されています。CTAや本文中で自社サービスについて触れる場合、" +
+          "必ずここに書かれている情報(必要に応じてweb_fetchでURLも確認すること)だけを根拠にし、" +
+          "登録されていない自社の実績・機能・料金等を絶対に創作してはいけません。\n" +
+          serviceMaterials
+            .map((m) => `- ${m.label}${m.urls.length > 0 ? `: ${m.urls.join(", ")}` : ""}${m.memo ? `（${m.memo}）` : ""}`)
+            .join("\n") +
           "\n"
         : "") +
       "参考ソースURLが与えられた場合は、必ずweb_fetchツールで実際にページ内容を取得し、" +

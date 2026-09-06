@@ -11,10 +11,11 @@ import { analyzeSearchIntent } from "./agents/searchIntent.js";
 import { reviewArticle } from "./agents/review.js";
 import { publishArticle, uploadEyecatchAndResolveBody } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
-import { loadStyleReferences } from "./clients/styleReferences.js";
+import { loadReferenceMaterials } from "./clients/referenceMaterials.js";
 import { loadNgWords } from "./clients/ngWords.js";
 import { loadSiteConfig, buildArticleUrl } from "./clients/siteConfig.js";
-import { loadThumbnailStyle } from "./clients/thumbnailStyle.js";
+import { loadImageLibrary } from "./clients/imageLibrary.js";
+import { loadGlobalSettings } from "./clients/globalSettings.js";
 import { appendPendingNotification } from "./clients/notificationLog.js";
 import { appendDailyStats } from "./clients/dailyStats.js";
 import { appendReviewQueueItem } from "./clients/reviewQueue.js";
@@ -44,10 +45,11 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const openai = createOpenAiClient(env);
   const microcms = new MicroCmsClient(env);
   const ctaOptions = loadCtas(env.CTA_CONFIG_PATH);
-  const styleReferences = loadStyleReferences(env.STYLE_REFERENCES_PATH);
+  const referenceMaterials = loadReferenceMaterials(env.REFERENCE_MATERIALS_PATH);
   const ngWords = loadNgWords(env.NG_WORDS_PATH);
   const siteConfig = loadSiteConfig(env.SITE_CONFIG_PATH);
-  const thumbnailStyle = loadThumbnailStyle(env.THUMBNAIL_STYLE_PATH);
+  const imageLibrary = loadImageLibrary(env.IMAGE_LIBRARY_PATH);
+  const globalSettings = loadGlobalSettings(env.GLOBAL_SETTINGS_PATH);
 
   const isManualRun = !!env.MANUAL_KEYWORD || !!env.MANUAL_CTA_ID;
 
@@ -184,15 +186,16 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
           existingCategories,
           effectiveCtaOptions,
           forcedCta?.id,
-          styleReferences,
+          referenceMaterials,
           searchIntent,
-          internalLinkCandidates
+          internalLinkCandidates,
+          globalSettings.mustNotViolate || undefined
         )
       );
-      const image = await generateArticleImage(openai, draft, thumbnailStyle);
+      const image = await generateArticleImage(openai, draft, imageLibrary);
       const figures = await generateFigures(openai, draft);
       const review = await withOneRetry(`査読(${topic.keyword})`, () =>
-        reviewArticle(claude, draft, env, existingArticleTitles, ngWords)
+        reviewArticle(claude, draft, env, existingArticleTitles, ngWords, globalSettings.mustNotViolate || undefined)
       );
 
       if (isManualRun) {

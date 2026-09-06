@@ -2,27 +2,29 @@ import type OpenAI from "openai";
 import { generateDiagram, generateEyecatch } from "../clients/openaiImage.js";
 import { renderBarChartSvg } from "../lib/chartSvg.js";
 import { truncateAltText } from "../lib/seoFile.js";
-import type { ThumbnailStyle } from "../clients/thumbnailStyle.js";
+import type { ImageEntry } from "../clients/imageLibrary.js";
+import { getThumbnailReference } from "../clients/imageLibrary.js";
 import type { ArticleDraft, GeneratedImage, RenderedFigure } from "../types.js";
 import { logger } from "../lib/logger.js";
 
 /**
  * 画像生成エージェント。失敗しても記事全体は止めず、画像なし（undefined）を返す。
  * 呼び出し元で下書き保存＋要確認リストへの追加を行うこと。
- * thumbnailStyle.referenceImageUrlが設定されている場合、そのデザインに寄せて生成する。
+ * 画像素材ライブラリに用途「通常記事のサムネ」の参考画像が登録されている場合、そのデザインに寄せて生成する。
+ * 参考画像の取得に失敗した場合(Googleドライブの共有リンク等、直接取得できない形式の場合を含む)は
+ * 自動的に通常生成にフォールバックする。
  */
 export async function generateArticleImage(
   openai: OpenAI,
   draft: ArticleDraft,
-  thumbnailStyle?: ThumbnailStyle
+  imageLibrary: ImageEntry[] = []
 ): Promise<GeneratedImage | undefined> {
   try {
+    const thumbnailReference = getThumbnailReference(imageLibrary);
     const { buffer, mimeType } = await generateEyecatch(
       openai,
       { title: draft.title, excerpt: draft.excerpt },
-      thumbnailStyle?.referenceImageUrl
-        ? { url: thumbnailStyle.referenceImageUrl, note: thumbnailStyle.note }
-        : undefined
+      thumbnailReference ? { url: thumbnailReference.url, note: thumbnailReference.note } : undefined
     );
     return { buffer, mimeType, altText: truncateAltText(draft.title) };
   } catch (err) {

@@ -11,9 +11,10 @@ const TOP_NAV_ITEMS = [
 ];
 
 const DESIGN_NAV_ITEMS = [
+  { href: "/global-settings", label: "全体設定", icon: "🛡" },
   { href: "/ctas", label: "CTA", icon: "🔗" },
-  { href: "/style-references", label: "参考記事", icon: "📄" },
-  { href: "/thumbnail", label: "サムネイル", icon: "🖼" },
+  { href: "/reference-materials", label: "参考記事", icon: "📄" },
+  { href: "/images", label: "画像", icon: "🖼" },
   { href: "/targets", label: "ターゲット", icon: "🎯" },
 ];
 
