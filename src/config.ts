@@ -18,6 +18,7 @@ const envSchema = z.object({
   THUMBNAIL_STYLE_PATH: z.string().optional(),
   DAILY_STATS_PATH: z.string().optional(),
   REWRITE_THRESHOLD_DAYS: z.coerce.number().int().positive().default(90),
+  REVIEW_QUEUE_PATH: z.string().optional(),
 
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 
@@ -39,6 +40,9 @@ const envSchema = z.object({
   MANUAL_SOURCE_URLS: z.string().optional(),
   MANUAL_NOTES: z.string().optional(),
   MANUAL_TARGET: z.string().optional(),
+
+  // --- 承認済み記事の反映(publishApproved.ts)専用 ---
+  MANUAL_QUEUE_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

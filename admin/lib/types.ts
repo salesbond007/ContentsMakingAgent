@@ -42,3 +42,47 @@ export interface TargetsFile {
   _comment?: string;
   targets: TargetProfile[];
 }
+
+// src/types.ts の ArticleDraft/ReviewResult/ReviewQueueItem と同じ形(表示に必要な分のみ)。
+
+export interface ReviewScores {
+  factCheck: number;
+  riskExpression: number;
+  brandToneManner: number;
+  plagiarismDuplication: number;
+}
+
+export interface ReviewResult {
+  scores: ReviewScores;
+  total: number;
+  verdict: "auto-publish" | "needs-review" | "rejected";
+  comments: string[];
+}
+
+export interface ArticleDraftSummary {
+  title: string;
+  altTitles?: string[];
+  excerpt: string;
+  body: string;
+  category: string;
+  tags: string[];
+  seo: { metaTitle: string; metaDescription: string };
+  topic: {
+    keyword: string;
+    sourceUrls: string[];
+    notes?: string;
+    targetProfile?: string;
+  };
+}
+
+export interface ReviewQueueItem {
+  id: string;
+  createdAt: string;
+  draft: ArticleDraftSummary;
+  eyecatch?: { url: string; alt: string };
+  review: ReviewResult;
+}
+
+export interface ReviewQueueFile {
+  items: ReviewQueueItem[];
+}

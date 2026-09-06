@@ -149,3 +149,19 @@ export async function dispatchContentWorkflow(inputs: {
     throw new Error(`GitHub Actions dispatch error ${res.status}: ${await res.text()}`);
   }
 }
+
+/** 承認された手動生成記事をCMSへ反映するworkflow_dispatchを発火する。 */
+export async function dispatchPublishApprovedWorkflow(queueId: string): Promise<void> {
+  const { owner, repo } = repoInfo();
+  const res = await githubFetch(`/repos/${owner}/${repo}/actions/workflows/publish-approved.yml/dispatches`, {
+    method: "POST",
+    body: JSON.stringify({
+      ref: "main",
+      inputs: { queue_id: queueId },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`GitHub Actions dispatch error ${res.status}: ${await res.text()}`);
+  }
+}

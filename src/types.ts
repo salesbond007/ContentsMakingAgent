@@ -97,9 +97,23 @@ export interface PipelineArticleResult {
   draft?: ArticleDraft;
   image?: GeneratedImage;
   review?: ReviewResult;
-  status: "published" | "needs-review" | "rejected" | "skipped-error";
+  status: "published" | "needs-review" | "rejected" | "skipped-error" | "pending-review";
   microcmsContentId?: string;
   error?: string;
+}
+
+/**
+ * 手動生成の記事が、管理画面での人間の確認を経てCMSへ反映されるまでの間、
+ * 一時的に保管しておくためのキュー1件分。画像はこの時点でmicroCMSのメディアライブラリに
+ * アップロード済みで、bodyの図解プレースホルダーも実際の<img>タグに解決済み(承認時に
+ * 再アップロードが不要になるようにするため)。
+ */
+export interface ReviewQueueItem {
+  id: string;
+  createdAt: string;
+  draft: ArticleDraft;
+  eyecatch?: { url: string; alt: string };
+  review: ReviewResult;
 }
 
 export interface PipelineRunSummary {

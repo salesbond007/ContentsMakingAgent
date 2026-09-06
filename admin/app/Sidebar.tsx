@@ -7,6 +7,7 @@ const TOP_NAV_ITEMS = [
   { href: "/", label: "ダッシュボード", icon: "◆" },
   { href: "/analytics", label: "数値解析", icon: "📊" },
   { href: "/generate", label: "コンテンツ生成", icon: "✎" },
+  { href: "/review-queue", label: "確認待ち", icon: "🕓" },
 ];
 
 const DESIGN_NAV_ITEMS = [

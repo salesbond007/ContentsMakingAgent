@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { Env } from "./config.js";
 import { createClaudeClient } from "./clients/claude.js";
 import { createOpenAiClient } from "./clients/openaiImage.js";
@@ -8,7 +9,7 @@ import { writeArticle } from "./agents/writing.js";
 import { generateArticleImage, generateFigures } from "./agents/image.js";
 import { analyzeSearchIntent } from "./agents/searchIntent.js";
 import { reviewArticle } from "./agents/review.js";
-import { publishArticle } from "./agents/publish.js";
+import { publishArticle, uploadEyecatchAndResolveBody } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
 import { loadStyleReferences } from "./clients/styleReferences.js";
 import { loadNgWords } from "./clients/ngWords.js";
@@ -16,6 +17,7 @@ import { loadSiteConfig, buildArticleUrl } from "./clients/siteConfig.js";
 import { loadThumbnailStyle } from "./clients/thumbnailStyle.js";
 import { appendPendingNotification } from "./clients/notificationLog.js";
 import { appendDailyStats } from "./clients/dailyStats.js";
+import { appendReviewQueueItem } from "./clients/reviewQueue.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.js";
@@ -25,7 +27,12 @@ import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.j
  * コスト上限（1日あたりのAPI呼び出し記事数）を超える場合は実行を停止しSlackに通知する。
  *
  * MANUAL_KEYWORD / MANUAL_CTA_ID が設定されている場合は、workflow_dispatchからの手動実行として
- * 通常の自動キーワード収集をスキップし、指定されたキーワード・CTAで1本だけ記事を生成する。
+ * 通常の自動キーワード収集をスキップし、指定されたキーワード・CTAで記事を生成する。
+ *
+ * 手動実行はAIの査読結果に関わらずmicroCMSへ直接公開せず、data/manual-review-queue.jsonの
+ * 確認待ちキューに追加する。管理画面「確認待ち」ページで人間が内容を確認し、承認して初めて
+ * CMSへ反映される(publishApproved.ts)。自動実行は従来通り、査読ゲートの判定に基づき
+ * 自動公開／下書き保存／差し戻しを行う。
  *
  * 通知方針: 手動実行はその場でSlackに結果を通知する（管理画面から見て分かりやすくするため）。
  * 一方、毎日の自動実行はリアルタイム通知せず、結果をdata/pending-notifications.jsonに蓄積するだけにし、
@@ -82,7 +89,8 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       }));
       await notifySlack(
         env,
-        `▶️ 手動実行: ${topics.length}件の記事を生成します(${manualKeywords.join(" / ")})`
+        `▶️ 手動実行: ${topics.length}件の記事を生成します(${manualKeywords.join(" / ")})。` +
+          `完了後、管理画面の「確認待ち」で確認・承認してください。`
       );
     } else if (manualKeywords.length === 1) {
       const topic = await buildManualTopic(
@@ -96,7 +104,9 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       topics = [topic];
       await notifySlack(
         env,
-        `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します` + (forcedCta ? `(CTA: ${forcedCta.label})` : "")
+        `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します` +
+          (forcedCta ? `(CTA: ${forcedCta.label})` : "") +
+          `。完了後、管理画面の「確認待ち」で確認・承認してください。`
       );
     } else if (forcedCta) {
       const topic = await buildManualTopic(
@@ -108,7 +118,11 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
         env.MANUAL_TARGET
       );
       topics = [topic];
-      await notifySlack(env, `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します(CTA: ${forcedCta.label})`);
+      await notifySlack(
+        env,
+        `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します(CTA: ${forcedCta.label})。` +
+          `完了後、管理画面の「確認待ち」で確認・承認してください。`
+      );
     } else {
       throw new Error(
         "手動実行にはキーワードを指定するか、CTAを1つだけ指定してください(CTAを複数指定する場合はキーワードも必要です)"
@@ -181,6 +195,24 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
         reviewArticle(claude, draft, env, existingArticleTitles, ngWords)
       );
 
+      if (isManualRun) {
+        // 手動生成はAIの査読結果(自動公開/要確認/差し戻し)に関わらずCMSへ直接反映せず、
+        // 人間が管理画面で確認・承認するまで確認待ちキューに置いておく。
+        const { eyecatch, resolvedDraft } = await uploadEyecatchAndResolveBody(microcms, draft, image, figures);
+        appendReviewQueueItem(
+          {
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            draft: resolvedDraft,
+            eyecatch,
+            review,
+          },
+          env.REVIEW_QUEUE_PATH
+        );
+        results.push({ topic, draft, image, review, status: "pending-review" });
+        continue;
+      }
+
       if (review.verdict === "rejected") {
         results.push({ topic, draft, image, review, status: "rejected" });
         continue;
@@ -207,6 +239,8 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const finishedAt = new Date().toISOString();
   const digest = buildCompletionDigest(results, costCapNote);
 
+  // 手動生成(pending-review)はまだCMSに何も反映されていないため、日次統計には含めない
+  // (承認された時点でpublishApproved.ts側の公開実績としてカウントされるべきもの)。
   appendDailyStats(
     {
       date: finishedAt.slice(0, 10),
@@ -243,6 +277,10 @@ function buildCompletionDigest(results: PipelineArticleResult[], costCapNote?: s
       );
     } else if (r.status === "rejected") {
       lines.push(`↩️ 記事：差し戻しました - ${title}（スコア: ${r.review?.total}）`);
+    } else if (r.status === "pending-review") {
+      lines.push(
+        `🕓 記事：ツールでの確認待ちです - ${title}（AI査読スコア: ${r.review?.total}）— 管理画面の「確認待ち」から確認・承認してください`
+      );
     } else {
       lines.push(`🚨 記事：エラーでスキップ - ${r.topic.keyword}（${r.error}）`);
     }
@@ -251,8 +289,12 @@ function buildCompletionDigest(results: PipelineArticleResult[], costCapNote?: s
   const published = results.filter((r) => r.status === "published").length;
   const needsReview = results.filter((r) => r.status === "needs-review").length;
   const rejected = results.filter((r) => r.status === "rejected").length;
+  const pendingReview = results.filter((r) => r.status === "pending-review").length;
   const errors = results.filter((r) => r.status === "skipped-error").length;
-  lines.push("", `合計: 公開${published}件 / 下書き${needsReview}件 / 差し戻し${rejected}件 / エラー${errors}件`);
+  lines.push(
+    "",
+    `合計: 公開${published}件 / 下書き${needsReview}件 / 差し戻し${rejected}件 / 確認待ち${pendingReview}件 / エラー${errors}件`
+  );
 
   return lines.join("\n");
 }

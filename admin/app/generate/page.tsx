@@ -70,7 +70,7 @@ export default function GeneratePage() {
 
     setMessage({
       type: "success",
-      text: "記事生成をリクエストしました。数分後にSlackへ完了通知が届きます。進捗はGitHub Actionsでも確認できます。",
+      text: "記事生成をリクエストしました。生成が完了すると「確認待ち」ページに追加されます(CMSへはまだ反映されません)。Slackにも完了通知が届きます。",
     });
     setKeyword("");
     setCtaIds([]);

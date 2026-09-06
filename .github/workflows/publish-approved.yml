@@ -1,0 +1,50 @@
+name: Publish Approved Manual Article
+
+on:
+  workflow_dispatch:
+    inputs:
+      queue_id:
+        description: "承認する記事のID(管理画面「確認待ち」の一覧に表示されているもの)"
+        required: true
+        type: string
+
+jobs:
+  publish-approved:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm run publish-approved
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MICROCMS_SERVICE_DOMAIN: ${{ secrets.MICROCMS_SERVICE_DOMAIN }}
+          MICROCMS_API_KEY: ${{ secrets.MICROCMS_API_KEY }}
+          MICROCMS_ARTICLES_ENDPOINT: ${{ vars.MICROCMS_ARTICLES_ENDPOINT }}
+          MICROCMS_KEYWORDS_ENDPOINT: ${{ vars.MICROCMS_KEYWORDS_ENDPOINT }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PUBLISH_TARGET_NAME: ${{ vars.PUBLISH_TARGET_NAME }}
+          MANUAL_QUEUE_ID: ${{ github.event.inputs.queue_id }}
+
+      # 承認済み記事はキューから削除されるため、変更をコミット・pushして永続化する。
+      - name: Persist review queue
+        run: |
+          if [ -n "$(git status --porcelain data/manual-review-queue.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/manual-review-queue.json
+            git commit -m "Remove approved article ${{ github.event.inputs.queue_id }} from review queue"
+            git push
+          fi

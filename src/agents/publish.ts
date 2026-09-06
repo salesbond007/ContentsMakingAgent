@@ -18,20 +18,10 @@ export async function publishArticle(
   image: GeneratedImage | undefined,
   figures: RenderedFigure[] = []
 ): Promise<string> {
-  let eyecatch: { url: string; alt: string } | undefined;
-  if (image) {
-    const fileName = toSeoFileName(draft.title, "eyecatch", "png");
-    const uploaded = await microcms.uploadMedia(image.buffer, fileName, image.mimeType);
-    eyecatch = { url: uploaded.url, alt: image.altText };
-  }
-
-  const resolvedDraft: ArticleDraft = { ...draft, body: await resolveFigurePlaceholders(microcms, draft, figures) };
+  const { eyecatch, resolvedDraft } = await uploadEyecatchAndResolveBody(microcms, draft, image, figures);
 
   const status = review.verdict === "auto-publish" ? "publish" : "draft";
-  const reviewWithTitleVariants: ReviewResult =
-    draft.altTitles && draft.altTitles.length > 0
-      ? { ...review, comments: [...review.comments, `タイトル代替案: ${draft.altTitles.join(" / ")}`] }
-      : review;
+  const reviewWithTitleVariants = withTitleVariantsInComments(resolvedDraft, review);
 
   const articleId = await microcms.createArticleFromDraft(
     resolvedDraft,
@@ -46,6 +36,63 @@ export async function publishArticle(
   }
 
   return articleId;
+}
+
+/**
+ * 人間の確認を経てから公開する記事(手動生成)向けに、承認時に呼び出す。
+ * 画像アップロード・図解プレースホルダー解決は確認待ちキューへ入れる時点で既に完了しているため、
+ * ここではcreateArticleFromDraftを呼ぶだけでよい。承認は人間の最終判断のため、常に即時公開する。
+ */
+export async function publishApprovedArticle(
+  env: Env,
+  microcms: MicroCmsClient,
+  draft: ArticleDraft,
+  review: ReviewResult,
+  eyecatch: { url: string; alt: string } | undefined
+): Promise<string> {
+  const reviewWithTitleVariants = withTitleVariantsInComments(draft, review);
+
+  const articleId = await microcms.createArticleFromDraft(
+    draft,
+    reviewWithTitleVariants,
+    env.PUBLISH_TARGET_NAME,
+    "publish",
+    eyecatch
+  );
+
+  if (draft.topic.keywordRecordId) {
+    await microcms.markKeywordUsed(draft.topic.keywordRecordId, articleId);
+  }
+
+  return articleId;
+}
+
+/**
+ * アイキャッチ画像をmicroCMSにアップロードし、本文中の図解プレースホルダーを実際の画像に解決する。
+ * 手動生成では、この結果を確認待ちキューに保存し、承認時に再アップロードせずに済むようにする。
+ */
+export async function uploadEyecatchAndResolveBody(
+  microcms: MicroCmsClient,
+  draft: ArticleDraft,
+  image: GeneratedImage | undefined,
+  figures: RenderedFigure[] = []
+): Promise<{ eyecatch?: { url: string; alt: string }; resolvedDraft: ArticleDraft }> {
+  let eyecatch: { url: string; alt: string } | undefined;
+  if (image) {
+    const fileName = toSeoFileName(draft.title, "eyecatch", "png");
+    const uploaded = await microcms.uploadMedia(image.buffer, fileName, image.mimeType);
+    eyecatch = { url: uploaded.url, alt: image.altText };
+  }
+
+  const resolvedDraft: ArticleDraft = { ...draft, body: await resolveFigurePlaceholders(microcms, draft, figures) };
+
+  return { eyecatch, resolvedDraft };
+}
+
+function withTitleVariantsInComments(draft: ArticleDraft, review: ReviewResult): ReviewResult {
+  return draft.altTitles && draft.altTitles.length > 0
+    ? { ...review, comments: [...review.comments, `タイトル代替案: ${draft.altTitles.join(" / ")}`] }
+    : review;
 }
 
 /**

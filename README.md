@@ -88,6 +88,13 @@ CTA一覧と同様、追加・削除はこのJSONファイルを直接編集す�
 リクエストでき、「数値解析」ページで公開数の推移、「設定」ページで1日あたりの自動生成本数(0にすると自動
 生成なし)・コスト上限を調整できる。CTA・参考記事・サムネイル・ターゲットは「コンテンツ設計」配下にまとまっている。
 
+**手動生成した記事はAIの査読結果に関わらずCMSへ直接反映されない。** 生成が完了すると
+`data/manual-review-queue.json` の確認待ちキューに追加され、管理画面の「確認待ち」ページで
+内容(本文プレビュー・AI査読スコア/コメント)を人間が確認したうえで「CMSに反映する」を押した記事だけが
+実際にmicroCMSへ公開される（`.github/workflows/publish-approved.yml` が反映を担当）。「却下する」を押すと
+CMSには一切触れずキューから削除される。自動実行(毎日07:00 JST)は従来通り、査読ゲートの判定に基づき
+自動公開／下書き保存／差し戻しを行う(この確認待ちフローは手動生成のみが対象)。
+
 管理画面を使わない場合、GitHub Actionsの「Run workflow」画面からも直接同じことができる。
 「Actions」タブ →「Daily Content Pipeline」→「Run workflow」を開くと、以下の入力欄が出る。
 
@@ -166,6 +173,7 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 - `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（`DAILY_ARTICLE_COUNT`が0の間はAI呼び出しを行わず終了、手動実行は本数設定に関わらず常に動く）。
 - `.github/workflows/daily-notify.yml`: 毎日21:00 JSTに、その日の自動実行結果をまとめて1通のSlackメッセージとして送信する（自動実行はリアルタイム通知しない。手動実行は従来通り即時通知）。
 - `.github/workflows/weekly-report.yml`: 毎週月曜21:10 JSTに、直近7日間の集計とリライト候補をSlackに送信する。
+- `.github/workflows/publish-approved.yml`: 管理画面の「確認待ち」で承認された手動生成記事を、管理画面から`queue_id`付きでworkflow_dispatchされてCMSへ反映する(常に即時公開)。
 
 以下をリポジトリのSecrets/Variablesに登録すること:
 
