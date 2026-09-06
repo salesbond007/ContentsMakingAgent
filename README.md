@@ -105,7 +105,7 @@ URLそのものは生成させない。使わなくなったCTAはJSONから削�
 「コンテンツ生成」ページからキーワード(カンマ区切りで複数指定可)・CTA(複数選択可)・ターゲット(登録済み
 プロフィールの選択、または自由記述)・その他盛り込んで欲しい内容(自由記述)・参考URLを指定して手動生成を
 リクエストでき、「数値解析」ページで公開数の推移、「設定」ページで1日あたりの自動生成本数(0にすると自動
-生成なし)・コスト上限を調整できる。全体設定・CTA・参考記事・画像・ターゲットは「コンテンツ設計」配下にまとまっている。
+生成なし)を調整できる。全体設定・CTA・参考記事・画像・ターゲットは「コンテンツ設計」配下にまとまっている。
 
 **手動生成した記事はAIの査読結果に関わらずCMSへ直接反映されない。** 生成が完了すると
 `data/manual-review-queue.json` の確認待ちキューに追加され、管理画面の「確認待ち」ページで
@@ -183,10 +183,6 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 - `REVIEW_NEEDS_CHECK_THRESHOLD`（既定60） 以上 → 下書き保存・要確認キュー・Slack通知
 - それ未満 → 差し戻し（記事はスキップ）
 
-## コスト上限
-
-`DAILY_ARTICLE_COUNT`（既定3）が `DAILY_API_CALL_CAP`（既定4）を超える場合は上限まで実行数を絞り、Slackに通知する。
-
 ## GitHub Actions
 
 - `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（`DAILY_ARTICLE_COUNT`が0の間はAI呼び出しを行わず終了、手動実行は本数設定に関わらず常に動く）。
@@ -197,7 +193,7 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 以下をリポジトリのSecrets/Variablesに登録すること:
 
 - Secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MICROCMS_SERVICE_DOMAIN`, `MICROCMS_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_FOLDER_ID`
-- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`（管理画面の「設定」から自動更新、0で自動生成なし）, `DAILY_API_CALL_CAP`（同上）, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`, `REWRITE_THRESHOLD_DAYS`(任意、既定90)
+- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`（管理画面の「設定」から自動更新、0で自動生成なし）, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`, `REWRITE_THRESHOLD_DAYS`(任意、既定90)
 
 ## CI
 

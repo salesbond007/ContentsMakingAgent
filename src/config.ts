@@ -30,7 +30,6 @@ const envSchema = z.object({
 
   // 0を指定すると自動生成を行わない(手動生成のみで運用したい場合に使う)。
   DAILY_ARTICLE_COUNT: z.coerce.number().int().nonnegative().default(3),
-  DAILY_API_CALL_CAP: z.coerce.number().int().positive().default(4),
   REVIEW_AUTO_PUBLISH_THRESHOLD: z.coerce.number().int().min(0).max(100).default(80),
   REVIEW_NEEDS_CHECK_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
   PUBLISH_TARGET_NAME: z.string().default("BondAIメディア"),

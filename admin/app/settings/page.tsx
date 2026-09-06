@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const [dailyArticleCount, setDailyArticleCount] = useState("3");
-  const [dailyApiCallCap, setDailyApiCallCap] = useState("4");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -14,7 +13,6 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setDailyArticleCount(data.dailyArticleCount ?? "3");
-        setDailyApiCallCap(data.dailyApiCallCap ?? "4");
         if (data.error) {
           setMessage({ type: "error", text: `現在の設定値を取得できませんでした(表示は既定値): ${data.error}` });
         }
@@ -33,7 +31,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dailyArticleCount, dailyApiCallCap }),
+      body: JSON.stringify({ dailyArticleCount }),
     });
 
     setSaving(false);
@@ -62,18 +60,9 @@ export default function SettingsPage() {
             </option>
           ))}
         </select>
-
-        <label>コスト上限(1日あたりのAPI呼び出し記事数の上限)</label>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          value={dailyApiCallCap}
-          onChange={(e) => setDailyApiCallCap(e.target.value)}
-        />
         <p style={{ marginBottom: 0 }}>
-          生成本数がコスト上限を超える場合は、上限まで自動的に絞られます。0を指定すると、毎日07:00 JSTの
-          自動生成自体を行わなくなります(「記事を生成」からの手動生成は引き続き使えます)。
+          0を指定すると、毎日07:00 JSTの自動生成自体を行わなくなります(「コンテンツ生成」からの手動生成は
+          引き続き使えます)。
         </p>
 
         {message && <div className={`message ${message.type}`}>{message.text}</div>}

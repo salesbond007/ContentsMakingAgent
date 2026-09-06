@@ -25,7 +25,6 @@ import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.j
 
 /**
  * 06-スケジューラ: GitHub Actions cronから1日1回(07:00 JST)起動され、工程01〜05を記事本数分ループ実行する。
- * コスト上限（1日あたりのAPI呼び出し記事数）を超える場合は実行を停止しSlackに通知する。
  *
  * MANUAL_KEYWORD / MANUAL_CTA_ID が設定されている場合は、workflow_dispatchからの手動実行として
  * 通常の自動キーワード収集をスキップし、指定されたキーワード・CTAで記事を生成する。
@@ -70,7 +69,6 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const effectiveCtaOptions = manualCtaOptions.length > 0 ? manualCtaOptions : ctaOptions;
 
   let topics: Topic[];
-  let costCapNote: string | undefined;
   if (isManualRun) {
     const manualSourceUrls = (env.MANUAL_SOURCE_URLS ?? "")
       .split(",")
@@ -135,11 +133,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     logger.info("DAILY_ARTICLE_COUNTが0のため、本日の自動生成をスキップします");
     return { startedAt, finishedAt: new Date().toISOString(), results: [] };
   } else {
-    const articleCount = Math.min(env.DAILY_ARTICLE_COUNT, env.DAILY_API_CALL_CAP);
-    if (env.DAILY_ARTICLE_COUNT > env.DAILY_API_CALL_CAP) {
-      costCapNote = `⚠️ コスト上限(${env.DAILY_API_CALL_CAP}本)により、本日の実行数を${env.DAILY_ARTICLE_COUNT}本から${articleCount}本に制限しました。`;
-    }
-    topics = await collectTopics(env, claude, microcms, articleCount);
+    topics = await collectTopics(env, claude, microcms, env.DAILY_ARTICLE_COUNT);
   }
 
   const results: PipelineArticleResult[] = [];
@@ -240,7 +234,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   }
 
   const finishedAt = new Date().toISOString();
-  const digest = buildCompletionDigest(results, costCapNote);
+  const digest = buildCompletionDigest(results);
 
   // 手動生成(pending-review)はまだCMSに何も反映されていないため、日次統計には含めない
   // (承認された時点でpublishApproved.ts側の公開実績としてカウントされるべきもの)。
@@ -266,9 +260,8 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   return { startedAt, finishedAt, results };
 }
 
-function buildCompletionDigest(results: PipelineArticleResult[], costCapNote?: string): string {
+function buildCompletionDigest(results: PipelineArticleResult[]): string {
   const lines: string[] = [];
-  if (costCapNote) lines.push(costCapNote, "");
 
   for (const r of results) {
     const title = r.draft?.title ?? r.topic.keyword;
