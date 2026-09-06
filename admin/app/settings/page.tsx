@@ -61,7 +61,8 @@ export default function SettingsPage() {
     setTogglingPause(false);
 
     if (!res.ok) {
-      setMessage({ type: "error", text: "切り替えに失敗しました" });
+      const body = await res.json().catch(() => ({}));
+      setMessage({ type: "error", text: body.error ?? "切り替えに失敗しました" });
       return;
     }
 
@@ -110,6 +111,7 @@ export default function SettingsPage() {
           「全自動」中は毎日07:00 JSTに自動で記事生成・公開まで実行されます。「手動(強制停止)」に切り替えると
           自動実行だけが止まります(＝稼働停止と同じ意味)。「記事を生成」からの手動実行はどちらのモードでも使えます。
         </p>
+        {message && <div className={`message ${message.type}`} style={{ marginTop: 12 }}>{message.text}</div>}
       </div>
 
       <form onSubmit={handleSubmit} className="card">
@@ -149,6 +151,26 @@ export default function SettingsPage() {
           この設定はGitHubリポジトリの「Variables」を直接更新します。もし保存時にエラーが出る場合は、
           管理画面用のGitHub Personal Access Tokenに「Variables: Read and write」権限が
           追加されているか確認してください(Contents・Actionsの権限だけでは更新できません)。
+        </p>
+      </div>
+
+      <div className="card">
+        <h2>査読ゲートの評価軸</h2>
+        <p>
+          生成された記事は公開前に、AIによる査読(ファクトチェック)を必ず通過します。以下の4観点を
+          各0〜25点で採点し、合計点をしきい値と比較して「自動公開」「下書き保存(要確認)」「差し戻し」の
+          いずれかに振り分けます(<code>src/agents/review.ts</code>)。
+        </p>
+        <ul style={{ marginTop: 0 }}>
+          <li><strong>事実確認(0〜25点)</strong>: 参考ソースURLの内容を実際に取得し、本文の主張・数値が整合しているか</li>
+          <li><strong>リスク表現(0〜25点)</strong>: 「必ず」「保証します」等の断定表現、誇大表現、薬機法・景表法的にグレーな言い回しが無いか(NGワードの機械チェックも加味)</li>
+          <li><strong>ブランド・トンマナ(0〜25点)</strong>: BtoBメディアとして落ち着いた文体・語彙になっているか</li>
+          <li><strong>剽窃・重複(0〜25点)</strong>: 出典の丸写しや、既存の自社記事とテーマ・切り口が実質的に重複していないか</li>
+        </ul>
+        <p style={{ marginBottom: 0 }}>
+          合計点80点以上(既定)で自動公開、60点以上(既定)で下書き保存・要確認、それ未満は差し戻しになります。
+          しきい値はGitHubリポジトリのVariables(<code>REVIEW_AUTO_PUBLISH_THRESHOLD</code> /{" "}
+          <code>REVIEW_NEEDS_CHECK_THRESHOLD</code>)で調整できます(この管理画面からはまだ変更できません)。
         </p>
       </div>
     </div>

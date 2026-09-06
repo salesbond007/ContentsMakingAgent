@@ -10,6 +10,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json()) as { paused?: boolean };
-  await setRepoVariable("PIPELINE_PAUSED", body.paused ? "true" : "false");
+
+  try {
+    await setRepoVariable("PIPELINE_PAUSED", body.paused ? "true" : "false");
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "切り替えに失敗しました" },
+      { status: 500 }
+    );
+  }
+
   return NextResponse.json({ ok: true });
 }
