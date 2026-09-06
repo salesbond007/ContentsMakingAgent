@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
-import { generateEyecatch } from "../clients/openaiImage.js";
-import type { ArticleDraft, GeneratedImage } from "../types.js";
+import { generateDiagram, generateEyecatch } from "../clients/openaiImage.js";
+import { renderBarChartSvg } from "../lib/chartSvg.js";
+import type { ArticleDraft, GeneratedImage, RenderedFigure } from "../types.js";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -24,4 +25,42 @@ export async function generateArticleImage(
     });
     return undefined;
   }
+}
+
+/**
+ * 本文中に挿入する図解(グラフ・概念図)を生成する。1件の生成に失敗しても他の図解の生成は続ける。
+ * 失敗した図解は結果に含まれず、公開エージェント側で本文中のプレースホルダーを除去する。
+ * - chart: 実データをもとにコード側で正確なSVGを描画（AI画像生成は使わない）
+ * - diagram: gpt-image-1で文字無しの概念図を生成
+ */
+export async function generateFigures(openai: OpenAI, draft: ArticleDraft): Promise<RenderedFigure[]> {
+  const figures: RenderedFigure[] = [];
+
+  for (const spec of draft.figures) {
+    try {
+      if (spec.type === "chart" && spec.chart) {
+        const svg = renderBarChartSvg(spec.chart, spec.caption);
+        figures.push({
+          token: spec.token,
+          buffer: Buffer.from(svg, "utf-8"),
+          mimeType: "image/svg+xml",
+          altText: spec.caption,
+        });
+      } else if (spec.type === "diagram" && spec.diagramPrompt) {
+        const { buffer, mimeType } = await generateDiagram(openai, {
+          caption: spec.caption,
+          diagramPrompt: spec.diagramPrompt,
+        });
+        figures.push({ token: spec.token, buffer, mimeType, altText: spec.caption });
+      }
+    } catch (err) {
+      logger.error("図解の生成に失敗しました。この図解なしで続行します。", {
+        title: draft.title,
+        token: spec.token,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return figures;
 }

@@ -5,9 +5,10 @@ import { MicroCmsClient } from "./clients/microcms.js";
 import { notifySlack } from "./clients/slack.js";
 import { collectTopics } from "./agents/research.js";
 import { writeArticle } from "./agents/writing.js";
-import { generateArticleImage } from "./agents/image.js";
+import { generateArticleImage, generateFigures } from "./agents/image.js";
 import { reviewArticle } from "./agents/review.js";
 import { publishArticle } from "./agents/publish.js";
+import { loadCtas } from "./clients/ctas.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary } from "./types.js";
@@ -34,6 +35,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
 
   const topics = await collectTopics(env, claude, microcms, articleCount);
   const results: PipelineArticleResult[] = [];
+  const ctaOptions = loadCtas(env.CTA_CONFIG_PATH);
 
   // 査読エージェントの「剽窃・重複」判定用に既存記事タイトルを取得（取得失敗時は空扱いで続行）。
   // 同一実行内で公開した記事タイトルも都度追加し、1回のバッチ内での重複も検知できるようにする。
@@ -55,9 +57,10 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   for (const topic of topics) {
     try {
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
-        writeArticle(claude, topic, existingCategories)
+        writeArticle(claude, topic, existingCategories, ctaOptions)
       );
       const image = await generateArticleImage(openai, draft);
+      const figures = await generateFigures(openai, draft);
       const review = await withOneRetry(`査読(${topic.keyword})`, () =>
         reviewArticle(claude, draft, env, existingArticleTitles)
       );
@@ -67,7 +70,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
         continue;
       }
 
-      const articleId = await publishArticle(env, microcms, draft, review, image);
+      const articleId = await publishArticle(env, microcms, draft, review, image, figures);
       existingArticleTitles.push(draft.title);
       if (!existingCategories.includes(draft.category)) existingCategories.push(draft.category);
       results.push({

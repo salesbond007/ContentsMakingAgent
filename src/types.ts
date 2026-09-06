@@ -26,9 +26,34 @@ export interface ArticleDraft {
     metaDescription: string;
   };
   topic: Topic;
+  figures: FigureSpec[];
 }
 
 export interface GeneratedImage {
+  buffer: Buffer;
+  mimeType: string;
+  altText: string;
+}
+
+/**
+ * 本文中に挿入する図解の指示。bodyには `[[FIGURE:token]]` というプレースホルダーが埋め込まれており、
+ * 画像生成後にそのプレースホルダーを実際の<img>タグへ置き換える。
+ * - chart: 出典等から得た実データに基づく正確なグラフ（AI画像生成は使わず、コード側でSVG描画する）
+ * - diagram: 数値を伴わない概念図・イメージ図（gpt-image-1で生成。誤情報防止のため文字は入れない）
+ */
+export interface FigureSpec {
+  token: string;
+  type: "chart" | "diagram";
+  caption: string;
+  chart?: {
+    labels: string[];
+    series: { name: string; values: number[] }[];
+  };
+  diagramPrompt?: string;
+}
+
+export interface RenderedFigure {
+  token: string;
   buffer: Buffer;
   mimeType: string;
   altText: string;
