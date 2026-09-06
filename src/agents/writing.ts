@@ -31,9 +31,12 @@ export async function writeArticle(
       "あなたはBtoB向けAIメディア「BondAIメディア」のライターです。" +
       "断定的な保証表現（『必ず』『保証します』等）や誇大な効果訴求を避け、" +
       "根拠のある落ち着いたトーンで執筆してください。" +
+      "参考ソースURLが与えられた場合は、必ずweb_fetchツールで実際にページ内容を取得し、" +
+      "そこに書かれている事実に基づいて執筆してください。URLの文字面だけで内容を推測して書かないこと。" +
+      "情報が古い・不足している場合や、参考ソースが無い場合は、web_searchツールで補足の裏付け情報を検索して構いません。" +
       "本文は h2/h3/p/ul/li/strong 等のタグのみを使ったHTML断片として出力し、" +
       "html/head/bodyタグやMarkdown記法（##、**太字**など）は使わないでください。" +
-      "JSONオブジェクトのみを返してください。",
+      "ツール呼び出しが終わったら、最後に必ずJSONオブジェクトのみを返してください。",
     prompt:
       `以下のキーワード・参考ソースをもとに記事を執筆してください。\n\n` +
       `キーワード: ${topic.keyword}\n` +
@@ -51,6 +54,7 @@ export async function writeArticle(
       `  "seo": { "metaTitle": "32字程度", "metaDescription": "120字程度" }\n` +
       `}`,
     maxTokens: 8192,
+    enableWebTools: true,
   });
 
   return {
