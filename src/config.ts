@@ -19,6 +19,7 @@ const envSchema = z.object({
   DAILY_STATS_PATH: z.string().optional(),
   REWRITE_THRESHOLD_DAYS: z.coerce.number().int().positive().default(90),
   REVIEW_QUEUE_PATH: z.string().optional(),
+  RESUME_STATE_PATH: z.string().optional(),
 
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 

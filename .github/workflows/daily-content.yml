@@ -67,15 +67,16 @@ jobs:
           MANUAL_NOTES: ${{ github.event.inputs.notes }}
           MANUAL_TARGET: ${{ github.event.inputs.target }}
 
-      # data/daily-stats.json は週次レポートが読む日次集計。変更をコミット・pushして永続化する。
-      - name: Persist daily stats
-        if: ${{ github.event_name == 'schedule' }}
+      # data/daily-stats.json は週次レポートが読む日次集計。data/resume-state.json はAPI残高不足で
+      # 中断した際の再開情報(中断時に作成、再開完了時に削除される)。どちらも変更をコミット・pushして永続化する。
+      - name: Persist daily stats and resume state
+        if: ${{ always() && github.event_name == 'schedule' }}
         run: |
-          if [ -n "$(git status --porcelain data/daily-stats.json)" ]; then
+          if [ -n "$(git status --porcelain data/daily-stats.json data/resume-state.json)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/daily-stats.json
-            git commit -m "Record daily stats from $(date -u +%Y-%m-%d) run"
+            git add data/daily-stats.json data/resume-state.json
+            git commit -m "Record daily stats/resume state from $(date -u +%Y-%m-%d) run"
             git push
           fi
 

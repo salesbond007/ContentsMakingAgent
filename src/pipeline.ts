@@ -18,6 +18,8 @@ import { loadImageLibrary } from "./clients/imageLibrary.js";
 import { loadGlobalSettings } from "./clients/globalSettings.js";
 import { appendDailyStats } from "./clients/dailyStats.js";
 import { appendReviewQueueItem } from "./clients/reviewQueue.js";
+import { loadResumeState, saveResumeState, clearResumeState } from "./clients/resumeState.js";
+import { isBillingError } from "./lib/billingError.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.js";
@@ -68,6 +70,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const effectiveCtaOptions = manualCtaOptions.length > 0 ? manualCtaOptions : ctaOptions;
 
   let topics: Topic[];
+  let previouslyCompletedCount = 0;
   if (isManualRun) {
     const manualSourceUrls = (env.MANUAL_SOURCE_URLS ?? "")
       .split(",")
@@ -132,7 +135,23 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     logger.info("DAILY_ARTICLE_COUNTが0のため、本日の自動生成をスキップします");
     return { startedAt, finishedAt: new Date().toISOString(), results: [] };
   } else {
-    topics = await collectTopics(env, claude, microcms, env.DAILY_ARTICLE_COUNT);
+    // 前回API残高不足等で中断した分が残っていれば、新規収集せずそこから再開する。
+    const resumeState = loadResumeState(env.RESUME_STATE_PATH);
+    if (resumeState) {
+      topics = resumeState.remainingTopics;
+      previouslyCompletedCount = resumeState.completedCount;
+      logger.info("前回中断分から再開します", {
+        interruptedOn: resumeState.interruptedOn,
+        remaining: topics.length,
+      });
+      await notifySlack(
+        env,
+        `▶️ 前回API残高不足で中断した分の続きから再開します(残り${topics.length}件、` +
+          `${resumeState.interruptedOn}時点で${resumeState.completedCount}件完了済み)`
+      );
+    } else {
+      topics = await collectTopics(env, claude, microcms, env.DAILY_ARTICLE_COUNT);
+    }
   }
 
   const results: PipelineArticleResult[] = [];
@@ -169,7 +188,9 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
         })
     : [];
 
-  for (const topic of topics) {
+  let billingInterrupted = false;
+
+  for (const [index, topic] of topics.entries()) {
     try {
       const searchIntent = await analyzeSearchIntent(claude, topic);
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
@@ -229,11 +250,49 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       await notifySlack(env, buildResultLine(result));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+
+      if (isBillingError(err)) {
+        // 残高不足・利用上限到達はリトライしても無駄なため、即座に全体を中断する。
+        logger.error("API残高不足/利用上限のため制作を中断します", { keyword: topic.keyword, error: message });
+        billingInterrupted = true;
+
+        if (!isManualRun) {
+          const remainingTopics = topics.slice(index); // 失敗した本人も含めて丸ごと持ち越す
+          const totalCompleted = previouslyCompletedCount + results.length;
+          saveResumeState(
+            {
+              interruptedOn: new Date().toISOString().slice(0, 10),
+              completedCount: totalCompleted,
+              remainingTopics,
+            },
+            env.RESUME_STATE_PATH
+          );
+          await notifySlack(
+            env,
+            `🛑 API残高不足/利用上限のため本日の制作を中断しました(完了${totalCompleted}件・残り${remainingTopics.length}件)。` +
+              `課金・チャージ完了後、次回の自動実行(または手動実行)で自動的に続きから再開します。\n` +
+              `エラー内容: ${message}`
+          );
+        } else {
+          await notifySlack(
+            env,
+            `🛑 API残高不足/利用上限のため手動生成を中断しました。課金・チャージ完了後、改めてリクエストしてください。\n` +
+              `エラー内容: ${message}`
+          );
+        }
+        break;
+      }
+
       logger.error("記事の生成に失敗したためスキップします", { keyword: topic.keyword, error: message });
       const result: PipelineArticleResult = { topic, status: "skipped-error", error: message };
       results.push(result);
       await notifySlack(env, buildResultLine(result));
     }
+  }
+
+  if (!isManualRun && !billingInterrupted) {
+    // 今回の実行が(再開分を含めて)最後まで完了したので、残っている中断情報があれば消す。
+    clearResumeState(env.RESUME_STATE_PATH);
   }
 
   const finishedAt = new Date().toISOString();
@@ -251,7 +310,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     env.DAILY_STATS_PATH
   );
 
-  if (results.length > 1) {
+  if (!billingInterrupted && results.length > 1) {
     await notifySlack(env, buildTotalsLine(results));
   }
 
