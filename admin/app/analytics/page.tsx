@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+      <div className="stat-grid">
         <StatCard label="本日の公開数" value={data.today} />
         <StatCard label="過去7日間" value={data.last7Days} />
         <StatCard label="過去30日間" value={data.last30Days} />
@@ -79,9 +79,9 @@ export default function AnalyticsPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card" style={{ margin: 0 }}>
-      <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>{label}</p>
-      <p style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>{value}</p>
+    <div className="stat-card">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{value}</div>
     </div>
   );
 }
@@ -92,13 +92,12 @@ function BarList({ items, max }: { items: { label: string; value: number }[]; ma
       {items.map((item) => (
         <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
           <span style={{ width: 56, color: "var(--muted)", flexShrink: 0 }}>{item.label}</span>
-          <div style={{ flex: 1, background: "var(--brand-light)", borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ flex: 1, background: "var(--brand-light)", overflow: "hidden" }}>
             <div
               style={{
                 width: `${(item.value / max) * 100}%`,
                 background: "var(--brand)",
                 height: 16,
-                borderRadius: 4,
                 minWidth: item.value > 0 ? 4 : 0,
               }}
             />

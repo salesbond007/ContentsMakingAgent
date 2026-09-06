@@ -2,21 +2,21 @@
   --brand: #7b1f2b;
   --brand-dark: #5c1620;
   --brand-light: #f7ebec;
-  --sidebar-bg: #1c1420;
-  --sidebar-bg-active: #2c1e28;
+  --sidebar-bg: #140f13;
+  --sidebar-bg-active: #241820;
   --sidebar-text: #cfc2c8;
   --sidebar-text-active: #ffffff;
-  --border: #e6e2e3;
-  --text: #211a1d;
-  --muted: #7a6f73;
-  --bg: #f6f4f5;
+  --border: #dcd6d7;
+  --text: #1a1416;
+  --muted: #6f6367;
+  --bg: #f2f0f0;
   --card-bg: #ffffff;
   --success-bg: #e6f4ea;
   --success-text: #1e7e34;
   --error-bg: #fdecea;
   --error-text: #b00020;
-  --radius: 12px;
-  --shadow: 0 1px 2px rgba(20, 10, 14, 0.04), 0 4px 16px rgba(20, 10, 14, 0.06);
+  --radius: 0px;
+  --shadow: 0 1px 2px rgba(20, 10, 14, 0.05), 0 6px 20px rgba(20, 10, 14, 0.06);
 }
 
 * {
@@ -29,6 +29,7 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
 }
 
 a {
@@ -65,7 +66,6 @@ a {
 .sidebar-brand-mark {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
   flex-shrink: 0;
 }
@@ -75,6 +75,7 @@ a {
   font-weight: 700;
   color: white;
   line-height: 1.3;
+  letter-spacing: 0.03em;
 }
 
 .sidebar-brand-text span {
@@ -83,6 +84,8 @@ a {
   font-weight: 400;
   color: var(--sidebar-text);
   opacity: 0.8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .sidebar nav {
@@ -100,8 +103,8 @@ a {
   font-size: 14px;
   font-weight: 500;
   padding: 9px 12px;
-  border-radius: 8px;
-  transition: background 0.12s, color 0.12s;
+  border-left: 2px solid transparent;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .sidebar nav a:hover {
@@ -112,6 +115,7 @@ a {
 .sidebar nav a.active {
   background: var(--sidebar-bg-active);
   color: var(--sidebar-text-active);
+  border-left-color: var(--brand);
 }
 
 .sidebar nav a .icon {
@@ -134,7 +138,6 @@ a {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 8px;
 }
 
 .sidebar-footer a:hover {
@@ -153,13 +156,14 @@ a {
   justify-content: space-between;
   padding: 20px 32px;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--text);
 }
 
 .topbar h1 {
   font-size: 18px;
   margin: 0;
   font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .topbar p {
@@ -178,6 +182,7 @@ a {
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--text);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 22px;
@@ -186,8 +191,10 @@ a {
 
 .card h2 {
   margin-top: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .card h3 {
@@ -206,7 +213,7 @@ a {
 .card-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--brand-light);
   color: var(--brand);
   display: flex;
@@ -214,16 +221,20 @@ a {
   justify-content: center;
   font-size: 17px;
   margin-bottom: 12px;
+  border: 1px solid var(--brand);
 }
 
 /* --- Forms --- */
 
 label {
   display: block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   margin-bottom: 4px;
   margin-top: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 input[type="text"],
@@ -234,7 +245,7 @@ select {
   width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 14px;
   font-family: inherit;
   background: var(--card-bg);
@@ -257,11 +268,13 @@ textarea {
 button {
   background: var(--brand);
   color: white;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid var(--brand);
+  border-radius: 0;
   padding: 9px 18px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   margin-top: 14px;
   transition: background 0.12s, transform 0.05s;
@@ -304,7 +317,8 @@ button:disabled {
 
 .item {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-left: 3px solid var(--brand);
+  border-radius: 0;
   padding: 14px 16px;
   margin-bottom: 10px;
   background: #fbfafa;
@@ -320,11 +334,13 @@ button:disabled {
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--brand-light);
   color: var(--brand);
+  border: 1px solid var(--brand);
 }
 
 /* --- Dashboard --- */
@@ -339,22 +355,46 @@ button:disabled {
 .stat-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 18px 20px;
 }
 
+.stat-card.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.12s, transform 0.05s;
+}
+
+.stat-card.clickable:hover {
+  box-shadow: 0 2px 4px rgba(20, 10, 14, 0.08), 0 10px 24px rgba(20, 10, 14, 0.1);
+}
+
+.stat-card.clickable:active {
+  transform: scale(0.99);
+}
+
 .stat-card .stat-label {
   font-size: 12px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .stat-card .stat-value {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card .stat-hint {
+  font-size: 11px;
+  color: var(--brand);
+  margin-top: 6px;
+  font-weight: 600;
 }
 
 .dashboard-grid {
@@ -367,7 +407,8 @@ button:disabled {
 
 .message {
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 0;
+  border-left: 3px solid currentColor;
   margin: 12px 0;
   font-size: 14px;
   font-weight: 500;
@@ -405,4 +446,41 @@ button:disabled {
 .login-box h2 {
   text-align: center;
   font-size: 18px;
+}
+
+/* --- Modal --- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 19, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--brand);
+  box-shadow: 0 20px 60px rgba(20, 10, 14, 0.3);
+  max-width: 520px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 26px;
+}
+
+.modal-box h2 {
+  margin-top: 0;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.modal-box .modal-close {
+  margin-top: 20px;
 }

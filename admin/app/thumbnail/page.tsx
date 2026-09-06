@@ -82,7 +82,7 @@ export default function ThumbnailPage() {
           <h3 style={{ marginTop: 0 }}>プレビュー</h3>
           {/* 管理者が登録した外部URLの画像をそのまま表示するだけの用途のため、next/imageの最適化は不要 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={referenceImageUrl} alt="参考画像プレビュー" style={{ maxWidth: "100%", borderRadius: 8 }} />
+          <img src={referenceImageUrl} alt="参考画像プレビュー" style={{ maxWidth: "100%" }} />
         </div>
       )}
     </div>
