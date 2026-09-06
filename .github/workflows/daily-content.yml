@@ -4,7 +4,20 @@ on:
   schedule:
     # 06:00 JST = 21:00 UTC(前日)。運用開始後に配信時間を調整すること。
     - cron: "0 21 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: "手動実行: 記事にしたいキーワード(空欄なら自動選定)"
+        required: false
+        type: string
+      cta_id:
+        description: "手動実行: 使用するCTAのid(config/ctas.json参照。keywordが空でCTAのみ指定した場合はCTAから逆算してキーワードを提案)"
+        required: false
+        type: string
+      source_urls:
+        description: "手動実行: 参考にしたいURL(カンマ区切り、任意)"
+        required: false
+        type: string
 
 jobs:
   generate-and-publish:
@@ -39,3 +52,6 @@ jobs:
           REVIEW_AUTO_PUBLISH_THRESHOLD: ${{ vars.REVIEW_AUTO_PUBLISH_THRESHOLD }}
           REVIEW_NEEDS_CHECK_THRESHOLD: ${{ vars.REVIEW_NEEDS_CHECK_THRESHOLD }}
           PUBLISH_TARGET_NAME: ${{ vars.PUBLISH_TARGET_NAME }}
+          MANUAL_KEYWORD: ${{ github.event.inputs.keyword }}
+          MANUAL_CTA_ID: ${{ github.event.inputs.cta_id }}
+          MANUAL_SOURCE_URLS: ${{ github.event.inputs.source_urls }}

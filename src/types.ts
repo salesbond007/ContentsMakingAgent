@@ -6,7 +6,7 @@ export interface KeywordRecord {
   sourceUrls?: string[];
 }
 
-export type TopicSource = "ledger" | "internal-doc" | "competitor" | "trend";
+export type TopicSource = "ledger" | "internal-doc" | "competitor" | "trend" | "manual";
 
 export interface Topic {
   keyword: string;

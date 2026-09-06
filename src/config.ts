@@ -24,6 +24,11 @@ const envSchema = z.object({
   REVIEW_AUTO_PUBLISH_THRESHOLD: z.coerce.number().int().min(0).max(100).default(80),
   REVIEW_NEEDS_CHECK_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
   PUBLISH_TARGET_NAME: z.string().default("BondAIメディア"),
+
+  // --- 手動実行(workflow_dispatch)専用。両方とも未指定なら通常の自動実行になる ---
+  MANUAL_KEYWORD: z.string().optional(),
+  MANUAL_CTA_ID: z.string().optional(),
+  MANUAL_SOURCE_URLS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

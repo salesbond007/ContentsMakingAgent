@@ -5,6 +5,7 @@ import { MicroCmsClient } from "../clients/microcms.js";
 import { fetchInternalDocs } from "../clients/googleDrive.js";
 import { fetchRssItems } from "../clients/rss.js";
 import { askClaudeForJson } from "../clients/claude.js";
+import type { CtaOption } from "../clients/ctas.js";
 import type { Topic } from "../types.js";
 import { logger } from "../lib/logger.js";
 
@@ -82,4 +83,37 @@ export async function collectTopics(
   }
 
   return topics.slice(0, count);
+}
+
+/**
+ * 手動実行(GitHub Actionsのworkflow_dispatch)専用のお題を1件だけ組み立てる。
+ * - keywordが指定されていればそれをそのまま使う。
+ * - keyword未指定でCTAのみ指定されている場合は、そのCTAへ自然につながる記事テーマを
+ *   AIに1件だけ逆算・提案させる（「CTAから逆算」ニーズへの対応）。
+ */
+export async function buildManualTopic(
+  claude: Anthropic,
+  manualKeyword: string | undefined,
+  manualSourceUrls: string[],
+  forcedCta: CtaOption | undefined
+): Promise<Topic> {
+  if (manualKeyword) {
+    return { keyword: manualKeyword, sourceUrls: manualSourceUrls, source: "manual" };
+  }
+
+  if (forcedCta) {
+    const suggestion = await askClaudeForJson<{ keyword: string }>(claude, {
+      system:
+        "あなたはBtoB向けAIメディア「BondAIメディア」の編集アシスタントです。" +
+        "指定されたCTA(行動喚起)へ読者が自然に進みたくなるような記事テーマを1つ提案してください。" +
+        "JSONオブジェクトのみを返してください。",
+      prompt:
+        `CTA: ${forcedCta.label}\n用途: ${forcedCta.useWhen}\n\n` +
+        `このCTAへ自然に読者を誘導できる記事キーワード・テーマを1つ考えてください。\n` +
+        `出力形式: { "keyword": "..." }`,
+    });
+    return { keyword: suggestion.keyword, sourceUrls: manualSourceUrls, source: "manual" };
+  }
+
+  throw new Error("手動実行にはキーワードまたはCTA IDのいずれかを指定してください");
 }

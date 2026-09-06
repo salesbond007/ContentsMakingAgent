@@ -45,7 +45,8 @@ export async function writeArticle(
   claude: Anthropic,
   topic: Topic,
   existingCategories: string[] = [],
-  ctaOptions: CtaOption[] = []
+  ctaOptions: CtaOption[] = [],
+  forcedCtaId?: string
 ): Promise<ArticleDraft> {
   const output = await askClaudeForJson<WritingLlmOutput>(claude, {
     system:
@@ -101,7 +102,10 @@ export async function writeArticle(
     enableWebTools: true,
   });
 
-  const selectedCta = ctaOptions.find((c) => c.id === output.ctaId);
+  // 手動実行でCTAが指定されている場合は、AIの選択より必ず優先する。
+  const selectedCta = forcedCtaId
+    ? ctaOptions.find((c) => c.id === forcedCtaId)
+    : ctaOptions.find((c) => c.id === output.ctaId);
   const body = selectedCta ? appendCta(output.body, selectedCta) : output.body;
   const figures = normalizeFigures(output.figures);
 
