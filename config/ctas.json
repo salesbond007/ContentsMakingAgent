@@ -8,13 +8,6 @@
       "url": "https://example.com/seminar",
       "buttonText": "セミナーに申し込む",
       "useWhen": "AI導入の進め方・比較検討など、セミナーで詳しく解説している内容と関連が深い記事"
-    },
-    {
-      "id": "service",
-      "label": "弊社サービスのご紹介",
-      "url": "https://example.com/service",
-      "buttonText": "サービス詳細を見る",
-      "useWhen": "自社サービスの機能・活用事例に直接関連する記事"
     }
   ]
 }
