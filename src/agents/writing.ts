@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { askClaudeForJson } from "../clients/claude.js";
 import type { CtaOption } from "../clients/ctas.js";
 import type { StyleReference } from "../clients/styleReferences.js";
-import type { ArticleDraft, FigureSpec, Topic } from "../types.js";
+import type { ArticleDraft, FigureSpec, SearchIntentInsight, Topic } from "../types.js";
 
 interface WritingLlmOutput {
   title: string;
@@ -23,11 +23,11 @@ interface WritingLlmOutput {
 
 const DEFAULT_CATEGORY = "未分類";
 const NO_CTA = "none";
-const MAX_FIGURES = 2;
+const MAX_FIGURES = 3;
 
 /**
  * ライティングエージェント。記事本文の執筆に加え、カテゴリの自己分類・SEOメタ情報の生成・
- * 記事末尾のCTA(行動喚起)選定・本文中の図解(グラフ/概念図)の指示までを担う。
+ * 記事中のCTA(行動喚起)選定・配置・本文中の図解(グラフ/概念図)の指示までを担う。
  * 査読エージェントはカテゴリのダブルチェックを行わない前提のため、ここで確定させる。
  *
  * カテゴリは固定リストを持たず、AIが記事内容に応じて自由に決める。ただし表記ゆれ（似た意味の
@@ -36,7 +36,8 @@ const MAX_FIGURES = 2;
  *
  * CTAはカテゴリと異なり、実在するURLへのリンクを扱う。AIにURLそのものを生成させるとハルシネーション
  * (存在しないURLのでっち上げ)のリスクがあるため、config/ctas.json に事前登録された選択肢の中から
- * 記事内容に最も合うものをIDで選ばせ、コード側で実URLを本文末尾に挿入する。
+ * 記事内容に最も合うものをIDで選ばせ、コード側で実URLを本文に挿入する。同じCTAを
+ * 「導入直後(バナー)」「本文中の課題提起後(インライン)」「記事末(フッター)」の3箇所に配置する。
  *
  * 図解も同様に、AIには「どういう図を、どこに入れるか」だけを決めさせ、実際の画像化は行わせない。
  * 数値を伴うグラフはコード側で正確にSVG描画し（AIに正確なグラフを描かせることはできないため）、
@@ -48,7 +49,8 @@ export async function writeArticle(
   existingCategories: string[] = [],
   ctaOptions: CtaOption[] = [],
   forcedCtaId?: string,
-  styleReferences: StyleReference[] = []
+  styleReferences: StyleReference[] = [],
+  searchIntent?: SearchIntentInsight
 ): Promise<ArticleDraft> {
   const output = await askClaudeForJson<WritingLlmOutput>(claude, {
     system:
@@ -75,9 +77,22 @@ export async function writeArticle(
       "ただし不自然な詰め込み（キーワードスタッフィング）は絶対にしないこと。" +
       "(3) seoMetaTitleは30文字前後でキーワードを含み、seoMetaDescriptionは120文字前後で" +
       "キーワードを含みつつ読者がクリックしたくなる具体的な内容にすること。" +
-      "CTAへのリンクは本文に含めないこと(別途挿入する)。" +
+      "(4) 各見出し(h2/h3)は結論を最初の一文で述べてから、理由・詳細を続けること（結論ファースト）。" +
+      "1つのh2セクションあたり300〜500字程度を目安にする（短すぎる断片的な記述、長すぎる冗長な記述を避ける）。" +
+      "(5) web_fetch/web_searchで実際に確認できた具体的な事例・数値があれば、本文中に最低1つ盛り込むこと。" +
+      "ただし実際に確認できた情報が無い場合、自社の実績や数値、顧客の声を絶対に創作してはいけない" +
+      "（一般的な説明のみで執筆すること。存在しない自社データをでっち上げるのはファクトチェックで必ず問題になる）。" +
+      (searchIntent
+        ? "\n検索意図分析の結果が与えられています。想定読者の悩みに正面から答える書き出しにし、" +
+          "上位記事に共通する必須要素は漏らさず盛り込み、差別化の余地として挙げられた切り口も意識して執筆してください。\n"
+        : "") +
+      "CTAは本文に3箇所配置する。選んだCTAが決まったら、" +
+      "導入文(最初の1〜2段落)の直後に `[[CTA_BANNER]]`、本文中で読者の課題・悩みに触れた直後に" +
+      "`[[CTA_INLINE]]` というプレースホルダーをそれぞれ1回ずつ、本文とは別の行に挿入すること" +
+      "（記事末のCTAは別途自動で追加されるので、本文中に自分でリンクを書かないこと）。" +
+      "ctaIdが\"" + NO_CTA + "\"の場合は、これらのプレースホルダーを一切入れないこと。" +
       "図解を入れる場合は、本文中の該当箇所に `[[FIGURE:任意のトークン名]]` というプレースホルダーを" +
-      "1行で挿入し、figuresフィールドに対応する情報を記載すること（記事全体で最大2つまで）。" +
+      `1行で挿入し、figuresフィールドに対応する情報を記載すること（記事全体で最大${MAX_FIGURES}つまで）。` +
       "グラフ(chart)は、web_fetch/web_searchで実際に確認した具体的な数値データがある場合のみ使うこと。" +
       "架空の数値を作ってはいけない。概念図(diagram)は、プロセスや関係性を視覚的に示したい場合に使い、" +
       "画像内に文字や数字を入れない前提でdiagramPromptに描いてほしい内容を英語または日本語で簡潔に書くこと。" +
@@ -87,6 +102,12 @@ export async function writeArticle(
       `以下のキーワード・参考ソースをもとに記事を執筆してください。\n\n` +
       `キーワード: ${topic.keyword}\n` +
       `参考ソースURL: ${topic.sourceUrls.join(", ") || "なし"}\n\n` +
+      (searchIntent
+        ? `検索意図分析の結果:\n` +
+          `- 想定読者・悩み: ${searchIntent.intentSummary}\n` +
+          `- 上位記事に共通する必須要素: ${searchIntent.mustHaveElements.join(", ") || "なし"}\n` +
+          `- 差別化の余地: ${searchIntent.differentiationOpportunity}\n\n`
+        : "") +
       `既存のカテゴリ一覧（できるだけこの中から適切なものを再利用してください。` +
       `どれも当てはまらない場合のみ、新しい簡潔なカテゴリ名を作成してください）:\n` +
       `${existingCategories.join(", ") || "まだ既存カテゴリはありません"}\n\n` +
@@ -122,7 +143,7 @@ export async function writeArticle(
   const selectedCta = forcedCtaId
     ? ctaOptions.find((c) => c.id === forcedCtaId)
     : ctaOptions.find((c) => c.id === output.ctaId);
-  const body = selectedCta ? appendCta(output.body, selectedCta) : output.body;
+  const body = insertCtas(output.body, selectedCta);
   const figures = normalizeFigures(output.figures);
 
   return {
@@ -137,8 +158,21 @@ export async function writeArticle(
   };
 }
 
-function appendCta(body: string, cta: CtaOption): string {
-  return `${body}\n<p class="cta"><a href="${cta.url}" rel="noopener">${cta.buttonText}</a></p>`;
+/**
+ * 本文中のCTAプレースホルダーを実際のリンクに置き換える。CTAが無い場合はプレースホルダーを除去し、
+ * 記事末のCTA(フッター)を追加しない。3箇所とも同じCTA（同じURL）だが、サイト側でのスタイル分けが
+ * できるようclassを分けている。
+ */
+export function insertCtas(body: string, cta: CtaOption | undefined): string {
+  if (!cta) {
+    return body.replace(/\[\[CTA_BANNER\]\]/g, "").replace(/\[\[CTA_INLINE\]\]/g, "");
+  }
+
+  const link = (className: string) => `<p class="${className}"><a href="${cta.url}" rel="noopener">${cta.buttonText}</a></p>`;
+
+  const withBanner = body.replace(/\[\[CTA_BANNER\]\]/g, link("cta-banner"));
+  const withInline = withBanner.replace(/\[\[CTA_INLINE\]\]/g, link("cta-inline"));
+  return `${withInline}\n${link("cta-footer")}`;
 }
 
 /** LLM出力を検証し、chart/diagramそれぞれに必要な情報が揃っているものだけを残す。 */

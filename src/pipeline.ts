@@ -6,6 +6,7 @@ import { notifySlack } from "./clients/slack.js";
 import { buildManualTopic, collectTopics } from "./agents/research.js";
 import { writeArticle } from "./agents/writing.js";
 import { generateArticleImage, generateFigures } from "./agents/image.js";
+import { analyzeSearchIntent } from "./agents/searchIntent.js";
 import { reviewArticle } from "./agents/review.js";
 import { publishArticle } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
@@ -83,8 +84,9 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
 
   for (const topic of topics) {
     try {
+      const searchIntent = await analyzeSearchIntent(claude, topic);
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
-        writeArticle(claude, topic, existingCategories, ctaOptions, forcedCta?.id, styleReferences)
+        writeArticle(claude, topic, existingCategories, ctaOptions, forcedCta?.id, styleReferences, searchIntent)
       );
       const image = await generateArticleImage(openai, draft);
       const figures = await generateFigures(openai, draft);

@@ -15,6 +15,17 @@ export interface Topic {
   keywordRecordId?: string;
 }
 
+/**
+ * 執筆前に行う検索意図分析の結果。実際にWeb検索で上位表示されている記事の見出し等を踏まえ、
+ * 「誰が・何に困って検索しているか」を言語化し、必須要素・差別化の余地を抽出したもの。
+ * 取得に失敗した場合はundefinedのまま執筆に進む（無くても記事は書けるため必須ではない）。
+ */
+export interface SearchIntentInsight {
+  intentSummary: string;
+  mustHaveElements: string[];
+  differentiationOpportunity: string;
+}
+
 export interface ArticleDraft {
   title: string;
   excerpt: string;
