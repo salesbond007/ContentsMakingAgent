@@ -62,6 +62,14 @@ export default function StyleReferencesPage() {
 
   return (
     <div>
+      <div className="card">
+        <p style={{ marginBottom: 0 }}>
+          登録した記事は、見出しの立て方・段落構成・語り口といった「構造とトーン」だけを参考にします。
+          業界・商材が異なる記事を参考にする可能性もあるため、書かれている内容・事実・数値・具体例は
+          一切転載・流用しません(AIへの指示として明示的に禁止しています)。
+        </p>
+      </div>
+
       {message && <div className={`message ${message.type}`}>{message.text}</div>}
 
       {references.length === 0 && (

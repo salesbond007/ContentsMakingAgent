@@ -31,3 +31,14 @@ export interface ThumbnailStyleFile {
   referenceImageUrl: string;
   note: string;
 }
+
+export interface TargetProfile {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface TargetsFile {
+  _comment?: string;
+  targets: TargetProfile[];
+}

@@ -38,6 +38,7 @@ const envSchema = z.object({
   MANUAL_CTA_ID: z.string().optional(),
   MANUAL_SOURCE_URLS: z.string().optional(),
   MANUAL_NOTES: z.string().optional(),
+  MANUAL_TARGET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

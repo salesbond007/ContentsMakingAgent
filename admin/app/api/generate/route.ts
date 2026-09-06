@@ -11,6 +11,7 @@ interface GenerateRequestLogEntry {
   ctaId: string | null;
   sourceUrls: string | null;
   notes: string | null;
+  target: string | null;
   requestedAt: string;
 }
 
@@ -30,17 +31,26 @@ export async function POST(request: NextRequest) {
     cta_id?: string;
     source_urls?: string;
     notes?: string;
+    target?: string;
   };
   const keyword = body.keyword?.trim();
   const ctaId = body.cta_id?.trim();
   const sourceUrls = body.source_urls?.trim();
   const notes = body.notes?.trim();
+  const target = body.target?.trim();
 
   if (!keyword && !ctaId) {
     return NextResponse.json({ error: "keywordまたはcta_idのいずれかを指定してください" }, { status: 400 });
   }
 
-  await dispatchContentWorkflow({ keyword, cta_id: ctaId, source_urls: sourceUrls, notes });
+  try {
+    await dispatchContentWorkflow({ keyword, cta_id: ctaId, source_urls: sourceUrls, notes, target });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "生成リクエストに失敗しました" },
+      { status: 500 }
+    );
+  }
 
   // ワークフロー発火が成功した後にログを残す。ログ保存自体の失敗で生成リクエストを失敗扱いにはしない。
   try {
@@ -52,6 +62,7 @@ export async function POST(request: NextRequest) {
         ctaId: ctaId ?? null,
         sourceUrls: sourceUrls ?? null,
         notes: notes ?? null,
+        target: target ?? null,
         requestedAt: new Date().toISOString(),
       },
       "Log manual generate request via admin panel"

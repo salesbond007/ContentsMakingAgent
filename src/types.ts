@@ -15,6 +15,8 @@ export interface Topic {
   keywordRecordId?: string;
   /** 手動実行時に指定された、記事に必ず盛り込んでほしい内容(自由記述)。 */
   notes?: string;
+  /** 手動実行時に指定された、想定読者・ターゲット属性(登録済みプロフィールの説明文、または自由記述)。 */
+  targetProfile?: string;
 }
 
 /**

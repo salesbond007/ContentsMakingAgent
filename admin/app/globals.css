@@ -118,6 +118,45 @@ a {
   border-left-color: var(--brand);
 }
 
+.sidebar-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--sidebar-text);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 9px 12px;
+  margin-top: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-group-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--sidebar-text-active);
+}
+
+.sidebar-group-caret {
+  margin-left: auto;
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  margin-left: 20px;
+}
+
 .sidebar nav a .icon {
   width: 16px;
   text-align: center;

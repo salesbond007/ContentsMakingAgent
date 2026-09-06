@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+const DUMMY_DAILY_COUNTS = [
+  { label: "08/24", value: 2 },
+  { label: "08/25", value: 3 },
+  { label: "08/26", value: 1 },
+  { label: "08/27", value: 3 },
+  { label: "08/28", value: 2 },
+  { label: "08/29", value: 4 },
+  { label: "08/30", value: 3 },
+];
+
 export default function DashboardPage() {
   const [dailyArticleCount, setDailyArticleCount] = useState<string | null>(null);
   const [showReviewGate, setShowReviewGate] = useState(false);
@@ -12,6 +22,8 @@ export default function DashboardPage() {
       .then((data) => setDailyArticleCount(data.dailyArticleCount ?? null))
       .catch(() => setDailyArticleCount(null));
   }, []);
+
+  const dummyMax = Math.max(1, ...DUMMY_DAILY_COUNTS.map((d) => d.value));
 
   return (
     <div>
@@ -33,42 +45,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="card">
+        <div className="item-header">
+          <h2 style={{ margin: 0 }}>公開記事数の推移(直近7日・ダミーデータ)</h2>
+          <a href="/analytics"><button className="secondary" style={{ marginTop: 0 }}>数値解析を開く</button></a>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+          {DUMMY_DAILY_COUNTS.map((d) => (
+            <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+              <span style={{ width: 56, color: "var(--muted)", flexShrink: 0 }}>{d.label}</span>
+              <div style={{ flex: 1, background: "var(--brand-light)", overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: `${(d.value / dummyMax) * 100}%`,
+                    background: "var(--brand)",
+                    height: 16,
+                  }}
+                />
+              </div>
+              <span style={{ width: 24, textAlign: "right", flexShrink: 0 }}>{d.value}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ marginBottom: 0 }}>実データは「数値解析」ページで確認できます。</p>
+      </div>
+
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-icon">✎</div>
-          <h2>記事を生成</h2>
-          <p>キーワードやCTAを指定して、自動生成とは別に1本だけ記事を作成します。</p>
+          <h2>コンテンツ生成</h2>
+          <p>キーワードやCTAを指定して、自動生成とは別に記事を作成します。</p>
           <a href="/generate"><button>開く</button></a>
-        </div>
-        <div className="card">
-          <div className="card-icon">📊</div>
-          <h2>数値解析</h2>
-          <p>公開記事数の推移(日次・月次)を確認します。</p>
-          <a href="/analytics"><button className="secondary">開く</button></a>
-        </div>
-        <div className="card">
-          <div className="card-icon">🔗</div>
-          <h2>CTA管理</h2>
-          <p>記事末尾に挿入するCTA・内部リンクの追加・編集・削除を行います。</p>
-          <a href="/ctas"><button className="secondary">開く</button></a>
-        </div>
-        <div className="card">
-          <div className="card-icon">📄</div>
-          <h2>文体の参考記事</h2>
-          <p>ライティングエージェントが文体・構成の参考にする記事URLを管理します。</p>
-          <a href="/style-references"><button className="secondary">開く</button></a>
-        </div>
-        <div className="card">
-          <div className="card-icon">🖼</div>
-          <h2>サムネイル</h2>
-          <p>アイキャッチ画像生成のデザイン参考画像を設定します。</p>
-          <a href="/thumbnail"><button className="secondary">開く</button></a>
-        </div>
-        <div className="card">
-          <div className="card-icon">⚙</div>
-          <h2>設定</h2>
-          <p>1日あたりの生成本数(0で自動生成なし)・コスト上限を調整します。</p>
-          <a href="/settings"><button className="secondary">開く</button></a>
         </div>
       </div>
 

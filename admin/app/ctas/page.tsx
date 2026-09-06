@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { generateId } from "@/lib/id";
 
 interface CtaOption {
   id: string;
@@ -10,14 +11,14 @@ interface CtaOption {
   useWhen: string;
 }
 
-const EMPTY: CtaOption = { id: "", label: "", url: "", buttonText: "", useWhen: "" };
+const EMPTY: Omit<CtaOption, "id"> = { label: "", url: "", buttonText: "", useWhen: "" };
 
 export default function CtasPage() {
   const [ctas, setCtas] = useState<CtaOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [draft, setDraft] = useState<CtaOption>(EMPTY);
+  const [draft, setDraft] = useState<Omit<CtaOption, "id">>(EMPTY);
 
   useEffect(() => {
     fetch("/api/ctas")
@@ -47,15 +48,15 @@ export default function CtasPage() {
   }
 
   function addDraft() {
-    if (!draft.id || !draft.label || !draft.url || !draft.buttonText) {
-      setMessage({ type: "error", text: "id・表示名・URL・ボタン文言は必須です" });
+    if (!draft.label || !draft.url || !draft.buttonText) {
+      setMessage({ type: "error", text: "表示名・URL・ボタン文言は必須です" });
       return;
     }
-    if (ctas.some((c) => c.id === draft.id)) {
-      setMessage({ type: "error", text: "そのidは既に使われています" });
-      return;
-    }
-    save([...ctas, draft]);
+    const id = generateId(
+      ctas.map((c) => c.id),
+      "cta"
+    );
+    save([...ctas, { ...draft, id }]);
     setDraft(EMPTY);
   }
 
@@ -98,8 +99,7 @@ export default function CtasPage() {
 
       <div className="card">
         <h3>新しいCTAを追加</h3>
-        <label>id(半角英数字、他と重複しないもの)</label>
-        <input type="text" value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} placeholder="例: internal-link-2026-09" />
+        <p style={{ marginTop: 0 }}>id(管理用の識別子)は保存時に自動採番されます。</p>
 
         <label>表示名</label>
         <input type="text" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="例: 生成AI導入事例の関連記事" />

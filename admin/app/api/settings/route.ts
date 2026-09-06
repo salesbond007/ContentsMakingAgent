@@ -10,15 +10,26 @@ const DEFAULTS = {
 };
 
 export async function GET() {
-  const [dailyArticleCount, dailyApiCallCap] = await Promise.all([
-    getRepoVariable("DAILY_ARTICLE_COUNT"),
-    getRepoVariable("DAILY_API_CALL_CAP"),
-  ]);
+  try {
+    const [dailyArticleCount, dailyApiCallCap] = await Promise.all([
+      getRepoVariable("DAILY_ARTICLE_COUNT"),
+      getRepoVariable("DAILY_API_CALL_CAP"),
+    ]);
 
-  return NextResponse.json({
-    dailyArticleCount: dailyArticleCount ?? DEFAULTS.DAILY_ARTICLE_COUNT,
-    dailyApiCallCap: dailyApiCallCap ?? DEFAULTS.DAILY_API_CALL_CAP,
-  });
+    return NextResponse.json({
+      dailyArticleCount: dailyArticleCount ?? DEFAULTS.DAILY_ARTICLE_COUNT,
+      dailyApiCallCap: dailyApiCallCap ?? DEFAULTS.DAILY_API_CALL_CAP,
+    });
+  } catch (err) {
+    return NextResponse.json(
+      {
+        dailyArticleCount: DEFAULTS.DAILY_ARTICLE_COUNT,
+        dailyApiCallCap: DEFAULTS.DAILY_API_CALL_CAP,
+        error: err instanceof Error ? err.message : "取得に失敗しました",
+      },
+      { status: 200 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -39,8 +50,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "コスト上限は1〜20の整数で指定してください" }, { status: 400 });
   }
 
-  await setRepoVariable("DAILY_ARTICLE_COUNT", String(articleCount));
-  await setRepoVariable("DAILY_API_CALL_CAP", String(apiCallCap));
+  try {
+    await setRepoVariable("DAILY_ARTICLE_COUNT", String(articleCount));
+    await setRepoVariable("DAILY_API_CALL_CAP", String(apiCallCap));
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "保存に失敗しました" },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

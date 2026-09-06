@@ -43,12 +43,22 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const thumbnailStyle = loadThumbnailStyle(env.THUMBNAIL_STYLE_PATH);
 
   const isManualRun = !!env.MANUAL_KEYWORD || !!env.MANUAL_CTA_ID;
-  const forcedCta = env.MANUAL_CTA_ID ? ctaOptions.find((c) => c.id === env.MANUAL_CTA_ID) : undefined;
-  if (env.MANUAL_CTA_ID && !forcedCta) {
-    throw new Error(
-      `指定されたCTA ID "${env.MANUAL_CTA_ID}" は config/ctas.json に存在しません。CTA一覧を確認してください。`
-    );
-  }
+
+  // MANUAL_CTA_ID はカンマ区切りで複数指定できる。1件だけならそのCTAに固定(forcedCta)、
+  // 複数ならその中からAIに選ばせる(effectiveCtaOptionsを絞り込む)、未指定なら全CTAから選ばせる。
+  const manualCtaIds = (env.MANUAL_CTA_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const manualCtaOptions = manualCtaIds.map((id) => {
+    const found = ctaOptions.find((c) => c.id === id);
+    if (!found) {
+      throw new Error(`指定されたCTA ID "${id}" は config/ctas.json に存在しません。CTA一覧を確認してください。`);
+    }
+    return found;
+  });
+  const forcedCta = manualCtaOptions.length === 1 ? manualCtaOptions[0] : undefined;
+  const effectiveCtaOptions = manualCtaOptions.length > 0 ? manualCtaOptions : ctaOptions;
 
   let topics: Topic[];
   let costCapNote: string | undefined;
@@ -57,13 +67,53 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const topic = await buildManualTopic(claude, env.MANUAL_KEYWORD, manualSourceUrls, forcedCta, env.MANUAL_NOTES);
-    topics = [topic];
-    await notifySlack(
-      env,
-      `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します` +
-        (forcedCta ? `(CTA: ${forcedCta.label})` : "")
-    );
+    const manualKeywords = (env.MANUAL_KEYWORD ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (manualKeywords.length > 1) {
+      topics = manualKeywords.map((keyword) => ({
+        keyword,
+        sourceUrls: manualSourceUrls,
+        source: "manual",
+        notes: env.MANUAL_NOTES,
+        targetProfile: env.MANUAL_TARGET,
+      }));
+      await notifySlack(
+        env,
+        `▶️ 手動実行: ${topics.length}件の記事を生成します(${manualKeywords.join(" / ")})`
+      );
+    } else if (manualKeywords.length === 1) {
+      const topic = await buildManualTopic(
+        claude,
+        manualKeywords[0],
+        manualSourceUrls,
+        forcedCta,
+        env.MANUAL_NOTES,
+        env.MANUAL_TARGET
+      );
+      topics = [topic];
+      await notifySlack(
+        env,
+        `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します` + (forcedCta ? `(CTA: ${forcedCta.label})` : "")
+      );
+    } else if (forcedCta) {
+      const topic = await buildManualTopic(
+        claude,
+        undefined,
+        manualSourceUrls,
+        forcedCta,
+        env.MANUAL_NOTES,
+        env.MANUAL_TARGET
+      );
+      topics = [topic];
+      await notifySlack(env, `▶️ 手動実行: 「${topic.keyword}」の記事を1本生成します(CTA: ${forcedCta.label})`);
+    } else {
+      throw new Error(
+        "手動実行にはキーワードを指定するか、CTAを1つだけ指定してください(CTAを複数指定する場合はキーワードも必要です)"
+      );
+    }
   } else if (env.DAILY_ARTICLE_COUNT === 0) {
     // 1日あたりの生成本数が0(=自動生成なし)に設定されている場合は、AI呼び出しを一切行わず終了する。
     logger.info("DAILY_ARTICLE_COUNTが0のため、本日の自動生成をスキップします");
@@ -118,7 +168,7 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
           claude,
           topic,
           existingCategories,
-          ctaOptions,
+          effectiveCtaOptions,
           forcedCta?.id,
           styleReferences,
           searchIntent,

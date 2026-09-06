@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       keyword:
-        description: "手動実行: 記事にしたいキーワード(空欄なら自動選定)"
+        description: "手動実行: 記事にしたいキーワード(空欄なら自動選定。カンマ区切りで複数指定すると複数本まとめて生成)"
         required: false
         type: string
       cta_id:
-        description: "手動実行: 使用するCTAのid(config/ctas.json参照。keywordが空でCTAのみ指定した場合はCTAから逆算してキーワードを提案)"
+        description: "手動実行: 使用するCTAのid(config/ctas.json参照。カンマ区切りで複数指定するとその中からAIが選ぶ。keywordが空でCTAを1つだけ指定した場合はCTAから逆算してキーワードを提案)"
         required: false
         type: string
       source_urls:
@@ -20,6 +20,10 @@ on:
         type: string
       notes:
         description: "手動実行: その他記事に盛り込んで欲しい内容(自由記述、任意)"
+        required: false
+        type: string
+      target:
+        description: "手動実行: 想定読者・ターゲット属性(自由記述、任意)"
         required: false
         type: string
 
@@ -62,6 +66,7 @@ jobs:
           MANUAL_CTA_ID: ${{ github.event.inputs.cta_id }}
           MANUAL_SOURCE_URLS: ${{ github.event.inputs.source_urls }}
           MANUAL_NOTES: ${{ github.event.inputs.notes }}
+          MANUAL_TARGET: ${{ github.event.inputs.target }}
 
       # 自動実行(cron)の結果はSlackへ即時通知せず、data/pending-notifications.json に蓄積している。
       # data/daily-stats.json は週次レポートが読む日次集計。どちらも変更をコミット・pushして永続化する。

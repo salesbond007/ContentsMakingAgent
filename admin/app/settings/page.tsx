@@ -15,6 +15,9 @@ export default function SettingsPage() {
       .then((data) => {
         setDailyArticleCount(data.dailyArticleCount ?? "3");
         setDailyApiCallCap(data.dailyApiCallCap ?? "4");
+        if (data.error) {
+          setMessage({ type: "error", text: `現在の設定値を取得できませんでした(表示は既定値): ${data.error}` });
+        }
       });
   }
 

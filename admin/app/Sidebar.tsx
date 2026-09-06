@@ -1,20 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const NAV_ITEMS = [
+const TOP_NAV_ITEMS = [
   { href: "/", label: "ダッシュボード", icon: "◆" },
-  { href: "/generate", label: "記事を生成", icon: "✎" },
   { href: "/analytics", label: "数値解析", icon: "📊" },
-  { href: "/ctas", label: "CTA", icon: "🔗" },
-  { href: "/style-references", label: "文体の参考記事", icon: "📄" },
-  { href: "/thumbnail", label: "サムネイル", icon: "🖼" },
-  { href: "/settings", label: "設定", icon: "⚙" },
+  { href: "/generate", label: "コンテンツ生成", icon: "✎" },
 ];
+
+const DESIGN_NAV_ITEMS = [
+  { href: "/ctas", label: "CTA", icon: "🔗" },
+  { href: "/style-references", label: "参考記事", icon: "📄" },
+  { href: "/thumbnail", label: "サムネイル", icon: "🖼" },
+  { href: "/targets", label: "ターゲット", icon: "🎯" },
+];
+
+const BOTTOM_NAV_ITEMS = [{ href: "/settings", label: "設定", icon: "⚙" }];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [designOpen, setDesignOpen] = useState(DESIGN_NAV_ITEMS.some((i) => i.href === pathname));
 
   if (pathname === "/login") return null;
 
@@ -34,7 +41,34 @@ export default function Sidebar() {
       </div>
 
       <nav>
-        {NAV_ITEMS.map((item) => (
+        {TOP_NAV_ITEMS.map((item) => (
+          <a key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}>
+            <span className="icon">{item.icon}</span>
+            {item.label}
+          </a>
+        ))}
+
+        <button
+          type="button"
+          className="sidebar-group-toggle"
+          onClick={() => setDesignOpen((v) => !v)}
+        >
+          <span className="icon">🧩</span>
+          コンテンツ設計
+          <span className="sidebar-group-caret">{designOpen ? "▾" : "▸"}</span>
+        </button>
+        {designOpen && (
+          <div className="sidebar-group">
+            {DESIGN_NAV_ITEMS.map((item) => (
+              <a key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}>
+                <span className="icon">{item.icon}</span>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {BOTTOM_NAV_ITEMS.map((item) => (
           <a key={item.href} href={item.href} className={pathname === item.href ? "active" : ""}>
             <span className="icon">{item.icon}</span>
             {item.label}
