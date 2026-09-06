@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRepoJsonFile, updateRepoJsonFile } from "@/lib/github";
+import { isTrustedOrigin } from "@/lib/security";
 import type { StyleReference, StyleReferencesFile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -12,6 +13,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedOrigin(request)) {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
+  }
+
   const body = (await request.json()) as { references: StyleReference[] };
 
   if (!Array.isArray(body.references) || body.references.some((r) => !r.label || !r.url)) {

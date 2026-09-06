@@ -4,8 +4,14 @@ import type { CtaOption } from "../clients/ctas.js";
 import type { StyleReference } from "../clients/styleReferences.js";
 import type { ArticleDraft, FigureSpec, SearchIntentInsight, Topic } from "../types.js";
 
+export interface InternalLinkCandidate {
+  title: string;
+  url: string;
+}
+
 interface WritingLlmOutput {
   title: string;
+  altTitles?: string[];
   excerpt: string;
   body: string;
   category: string;
@@ -50,7 +56,8 @@ export async function writeArticle(
   ctaOptions: CtaOption[] = [],
   forcedCtaId?: string,
   styleReferences: StyleReference[] = [],
-  searchIntent?: SearchIntentInsight
+  searchIntent?: SearchIntentInsight,
+  internalLinkCandidates: InternalLinkCandidate[] = []
 ): Promise<ArticleDraft> {
   const output = await askClaudeForJson<WritingLlmOutput>(claude, {
     system:
@@ -97,6 +104,16 @@ export async function writeArticle(
       "架空の数値を作ってはいけない。概念図(diagram)は、プロセスや関係性を視覚的に示したい場合に使い、" +
       "画像内に文字や数字を入れない前提でdiagramPromptに描いてほしい内容を英語または日本語で簡潔に書くこと。" +
       "図解を入れる必要が無ければfiguresは空配列にしてよい。" +
+      (internalLinkCandidates.length > 0
+        ? "\n内部リンク候補として、自社の既存公開記事一覧が与えられています。本文の趣旨と本当に関連するものが" +
+          "あれば、自然な文脈で1〜2個だけ `<a href=\"URL\">記事タイトルなど自然なアンカーテキスト</a>` の形で" +
+          "本文中に挿入すること。関連する記事が無ければ無理に入れなくてよい。ここに無いURLを作ってはいけない。\n" +
+          internalLinkCandidates.map((c) => `- ${c.title}: ${c.url}`).join("\n") +
+          "\n"
+        : "") +
+      "titleとは別に、altTitlesとして雰囲気の異なるタイトル案を2つ提示すること" +
+      "(例: 数字を使った案、疑問形の案など)。これは人間が下書き確認時にA/Bとして選べるようにするための" +
+      "参考であり、本文中では使わない。" +
       "ツール呼び出しが終わったら、最後に必ずJSONオブジェクトのみを返してください。",
     prompt:
       `以下のキーワード・参考ソースをもとに記事を執筆してください。\n\n` +
@@ -119,6 +136,7 @@ export async function writeArticle(
       `\n\n出力形式(JSON):\n` +
       `{\n` +
       `  "title": "記事タイトル",\n` +
+      `  "altTitles": ["代替タイトル案1", "代替タイトル案2"],\n` +
       `  "excerpt": "100字程度の要約",\n` +
       `  "body": "HTML断片の本文(1500〜2500字程度、h2/h3見出し・pタグ・ul/li・必要に応じてtableを使用)",\n` +
       `  "category": "カテゴリ名(既存の再利用、または新規の簡潔な名称)",\n` +
@@ -148,6 +166,7 @@ export async function writeArticle(
 
   return {
     title: output.title,
+    altTitles: Array.isArray(output.altTitles) ? output.altTitles.filter(Boolean).slice(0, 2) : [],
     excerpt: output.excerpt,
     body,
     category: output.category?.trim() || DEFAULT_CATEGORY,

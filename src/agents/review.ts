@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { askClaudeForJson } from "../clients/claude.js";
+import { findNgWordHits } from "../clients/ngWords.js";
 import type { ArticleDraft, ReviewResult, ReviewScores, ReviewVerdict } from "../types.js";
 import type { Env } from "../config.js";
 
@@ -35,21 +36,31 @@ export async function reviewArticle(
   claude: Anthropic,
   draft: ArticleDraft,
   env: Pick<Env, "REVIEW_AUTO_PUBLISH_THRESHOLD" | "REVIEW_NEEDS_CHECK_THRESHOLD">,
-  existingArticleTitles: string[] = []
+  existingArticleTitles: string[] = [],
+  ngWords: string[] = []
 ): Promise<ReviewResult> {
+  const ngWordHits = findNgWordHits(draft.body, ngWords);
+
   const output = await askClaudeForJson<ReviewLlmOutput>(claude, {
     system:
       "あなたはBondAIメディアの査読・ファクトチェック担当者です。以下の4観点をそれぞれ0〜25点で採点してください。\n" +
       "1. 事実確認: 参考ソースURLがあれば、必ずweb_fetchツールで実際にページ内容を取得し、\n" +
       "   本文中の主張・数値がその内容と本当に整合しているか確認すること。文面の印象だけで判定しないこと。\n" +
       "   出典が無い、または出典で確認できない重要な断定は減点。判断に迷う数値・固有名詞はweb_searchで裏付けを取ってよい。\n" +
-      "2. リスク表現: 「必ず」「保証します」等の断定的表現、誇大な効果訴求が無いか。\n" +
+      "2. リスク表現: 「必ず」「保証します」等の断定的表現、誇大な効果訴求が無いか。" +
+      "薬機法・景表法の観点でグレーな効果効能の断定表現が無いかも確認すること。\n" +
       "3. ブランド・トンマナ: BtoBメディアとして落ち着いた文体・語彙になっているか。\n" +
       "4. 剽窃・重複: 出典の丸写しや不自然な類似表現が無いか。加えて「既存の自社記事タイトル一覧」と\n" +
       "   テーマ・切り口が実質的に重複していないかも確認し、重複していれば減点すること。\n" +
       "カテゴリの妥当性は採点対象に含めないこと（ライティング側で確定済み）。" +
       "本文中の `[[FIGURE:...]]` は図解画像の挿入位置を示す一時的なプレースホルダーであり、" +
       "公開時に実際の画像へ置き換わる。文章としての不備とはみなさないこと。" +
+      (ngWordHits.length > 0
+        ? "\n機械チェックにより、以下のNGワード・言い回しが本文中に検出されています。" +
+          "これを踏まえてリスク表現の点数を必ず下げ、commentsにも指摘として含めること。\n" +
+          ngWordHits.map((w) => `- 「${w}」`).join("\n") +
+          "\n"
+        : "") +
       "ツール呼び出しが終わったら、最後に必ずJSONオブジェクトのみを返してください。",
     prompt:
       `記事タイトル: ${draft.title}\n` +

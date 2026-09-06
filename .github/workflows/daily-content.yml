@@ -62,14 +62,14 @@ jobs:
           MANUAL_SOURCE_URLS: ${{ github.event.inputs.source_urls }}
 
       # 自動実行(cron)の結果はSlackへ即時通知せず、data/pending-notifications.json に蓄積している。
-      # 変更をコミット・pushして、21:00 JSTの通知ワークフローが読み取れるようにする。
-      - name: Persist pending notifications
+      # data/daily-stats.json は週次レポートが読む日次集計。どちらも変更をコミット・pushして永続化する。
+      - name: Persist pending notifications and daily stats
         if: ${{ github.event_name == 'schedule' }}
         run: |
-          if [ -n "$(git status --porcelain data/pending-notifications.json)" ]; then
+          if [ -n "$(git status --porcelain data/pending-notifications.json data/daily-stats.json)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/pending-notifications.json
-            git commit -m "Record pending notifications from $(date -u +%Y-%m-%d) run"
+            git add data/pending-notifications.json data/daily-stats.json
+            git commit -m "Record pending notifications and daily stats from $(date -u +%Y-%m-%d) run"
             git push
           fi

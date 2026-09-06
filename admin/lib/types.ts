@@ -25,3 +25,9 @@ export interface StyleReferencesFile {
   _comment?: string;
   references: StyleReference[];
 }
+
+export interface ThumbnailStyleFile {
+  _comment?: string;
+  referenceImageUrl: string;
+  note: string;
+}

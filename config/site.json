@@ -1,0 +1,4 @@
+{
+  "_comment": "内部リンク自動提案機能で使う、記事詳細ページのURLパターン。{id}をmicroCMSのコンテンツIDに置換して使う。サイトのURL設計が決まったら articleUrlPattern を設定すること（例: 'https://media.example.com/articles/{id}'）。空欄のままなら内部リンク機能は自動的に無効のまま。",
+  "articleUrlPattern": ""
+}

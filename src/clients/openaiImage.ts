@@ -1,5 +1,6 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import type { Env } from "../config.js";
+import { logger } from "../lib/logger.js";
 
 export function createOpenAiClient(env: Env): OpenAI {
   return new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -13,9 +14,22 @@ export const BRAND_STYLE_PROMPT =
 
 export async function generateEyecatch(
   client: OpenAI,
-  opts: { title: string; excerpt: string }
+  opts: { title: string; excerpt: string },
+  referenceImage?: { url: string; note?: string }
 ): Promise<{ buffer: Buffer; mimeType: string }> {
   const prompt = `${BRAND_STYLE_PROMPT}\n\n記事タイトル: ${opts.title}\n記事の要約: ${opts.excerpt}`;
+
+  if (referenceImage?.url) {
+    try {
+      return await generateEyecatchFromReference(client, prompt, referenceImage);
+    } catch (err) {
+      logger.warn("参考画像を使ったアイキャッチ生成に失敗したため、通常生成にフォールバックします", {
+        referenceImageUrl: referenceImage.url,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   const result = await client.images.generate({
     model: "gpt-image-1",
     prompt,
@@ -26,6 +40,42 @@ export async function generateEyecatch(
   const b64 = result.data?.[0]?.b64_json;
   if (!b64) {
     throw new Error("gpt-image-1から画像データを取得できませんでした");
+  }
+  return { buffer: Buffer.from(b64, "base64"), mimeType: "image/png" };
+}
+
+/**
+ * 管理画面で登録された参考画像をもとに、gpt-image-1の画像編集APIでデザインを踏襲した
+ * アイキャッチ画像を生成する。参考画像の取得や編集APIが失敗した場合は呼び出し元でフォールバックする。
+ */
+async function generateEyecatchFromReference(
+  client: OpenAI,
+  basePrompt: string,
+  referenceImage: { url: string; note?: string }
+): Promise<{ buffer: Buffer; mimeType: string }> {
+  const res = await fetch(referenceImage.url);
+  if (!res.ok) throw new Error(`参考画像の取得に失敗しました: ${res.status}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") ?? "image/png";
+  const file = await toFile(buffer, "reference.png", { type: contentType });
+
+  const prompt =
+    `${basePrompt}\n\n` +
+    "参考画像として渡す既存のアイキャッチデザインの配色・構図・雰囲気を踏襲しつつ、" +
+    "この記事の内容に合わせて新しく描き直してください。" +
+    (referenceImage.note ? `\n参考画像についての補足: ${referenceImage.note}` : "");
+
+  const result = await client.images.edit({
+    model: "gpt-image-1",
+    image: file,
+    prompt,
+    size: "1536x1024",
+    n: 1,
+  });
+
+  const b64 = result.data?.[0]?.b64_json;
+  if (!b64) {
+    throw new Error("gpt-image-1(画像編集)から画像データを取得できませんでした");
   }
   return { buffer: Buffer.from(b64, "base64"), mimeType: "image/png" };
 }

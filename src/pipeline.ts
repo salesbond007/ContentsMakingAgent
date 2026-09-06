@@ -11,7 +11,11 @@ import { reviewArticle } from "./agents/review.js";
 import { publishArticle } from "./agents/publish.js";
 import { loadCtas } from "./clients/ctas.js";
 import { loadStyleReferences } from "./clients/styleReferences.js";
+import { loadNgWords } from "./clients/ngWords.js";
+import { loadSiteConfig, buildArticleUrl } from "./clients/siteConfig.js";
+import { loadThumbnailStyle } from "./clients/thumbnailStyle.js";
 import { appendPendingNotification } from "./clients/notificationLog.js";
+import { appendDailyStats } from "./clients/dailyStats.js";
 import { withOneRetry } from "./lib/retry.js";
 import { logger } from "./lib/logger.js";
 import type { PipelineArticleResult, PipelineRunSummary, Topic } from "./types.js";
@@ -34,6 +38,9 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
   const microcms = new MicroCmsClient(env);
   const ctaOptions = loadCtas(env.CTA_CONFIG_PATH);
   const styleReferences = loadStyleReferences(env.STYLE_REFERENCES_PATH);
+  const ngWords = loadNgWords(env.NG_WORDS_PATH);
+  const siteConfig = loadSiteConfig(env.SITE_CONFIG_PATH);
+  const thumbnailStyle = loadThumbnailStyle(env.THUMBNAIL_STYLE_PATH);
 
   const isManualRun = !!env.MANUAL_KEYWORD || !!env.MANUAL_CTA_ID;
   const forcedCta = env.MANUAL_CTA_ID ? ctaOptions.find((c) => c.id === env.MANUAL_CTA_ID) : undefined;
@@ -84,16 +91,40 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
     return [] as string[];
   });
 
+  // 内部リンク自動提案用。サイトのURLパターンが未設定の場合は誤ったリンクを避けるため取得自体を行わない。
+  const internalLinkCandidates = siteConfig.articleUrlPattern
+    ? await microcms
+        .getArticlesForInternalLinking()
+        .then((articles) =>
+          articles.map((a) => ({ title: a.title, url: buildArticleUrl(siteConfig.articleUrlPattern, a.id) }))
+        )
+        .catch((err) => {
+          logger.warn("内部リンク候補の取得に失敗しました。内部リンク提案なしで続行します。", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return [];
+        })
+    : [];
+
   for (const topic of topics) {
     try {
       const searchIntent = await analyzeSearchIntent(claude, topic);
       const draft = await withOneRetry(`ライティング(${topic.keyword})`, () =>
-        writeArticle(claude, topic, existingCategories, ctaOptions, forcedCta?.id, styleReferences, searchIntent)
+        writeArticle(
+          claude,
+          topic,
+          existingCategories,
+          ctaOptions,
+          forcedCta?.id,
+          styleReferences,
+          searchIntent,
+          internalLinkCandidates
+        )
       );
-      const image = await generateArticleImage(openai, draft);
+      const image = await generateArticleImage(openai, draft, thumbnailStyle);
       const figures = await generateFigures(openai, draft);
       const review = await withOneRetry(`査読(${topic.keyword})`, () =>
-        reviewArticle(claude, draft, env, existingArticleTitles)
+        reviewArticle(claude, draft, env, existingArticleTitles, ngWords)
       );
 
       if (review.verdict === "rejected") {
@@ -121,6 +152,17 @@ export async function runPipeline(env: Env): Promise<PipelineRunSummary> {
 
   const finishedAt = new Date().toISOString();
   const digest = buildCompletionDigest(results, costCapNote);
+
+  appendDailyStats(
+    {
+      date: finishedAt.slice(0, 10),
+      published: results.filter((r) => r.status === "published").length,
+      needsReview: results.filter((r) => r.status === "needs-review").length,
+      rejected: results.filter((r) => r.status === "rejected").length,
+      errors: results.filter((r) => r.status === "skipped-error").length,
+    },
+    env.DAILY_STATS_PATH
+  );
 
   if (isManualRun) {
     // 手動実行は管理画面から見て分かりやすいよう、その場で通知する。

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRepoVariable, setRepoVariable } from "@/lib/github";
+import { isTrustedOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedOrigin(request)) {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
+  }
+
   const body = (await request.json()) as { dailyArticleCount?: string; dailyApiCallCap?: string };
 
   const articleCount = Number(body.dailyArticleCount);

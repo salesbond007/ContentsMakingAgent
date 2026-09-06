@@ -19,7 +19,7 @@ BondAIメディア向けのコンテンツ制作自動化パイプライン。�
 - **結論ファースト・文字数**: 各見出し(h2/h3)は結論を最初の一文で述べてから詳細を続け、1つのh2セクションあたり300〜500字程度を目安にする。
 - **一次情報**: web_fetch/web_searchで実際に確認できた事例・数値があれば最低1つ盛り込む。ただし確認できた情報が無い場合、自社の実績・数値を創作することは禁止(ハルシネーション防止)。
 - **meta情報**: `seoMetaTitle`は30文字前後、`seoMetaDescription`は120文字前後でキーワードを含み、クリックしたくなる具体的な内容にするよう指示している。
-- **内部リンク・構造化データ(schema.org)**: 未対応。内部リンクは記事URLの命名規則が定まり次第(現状は`config/ctas.json`の`internal-link-*`エントリで手動運用)、構造化データはサイト側でJSON-LDを出力する実装が必要(いずれもサイト側リポジトリとの連携が前提)。
+- **内部リンク**: [`config/site.json`](./config/site.json) の `articleUrlPattern`(例: `https://media.example.com/articles/{id}`)を設定すると、直近の公開記事一覧をライティングエージェントに渡し、本文と関連が深い場合のみ自然な文脈でリンクを挿入する(でっち上げ防止のため、ここで取得したURL以外は使わせない)。空欄のままなら機能自体が無効化される。それとは別に、頻繁に差し替えたい訴求リンクは引き続き`config/ctas.json`の`internal-link-*`エントリで手動運用できる。構造化データ(schema.org)は未対応(サイト側でJSON-LDを出力する実装が必要)。
 - **検索ボリューム・難易度**: 対応していない。Ahrefs等の有料SEOツールのAPI契約が前提になるため、契約する場合は追加実装が必要。
 
 ## CTA（記事末尾の行動喚起リンク）
@@ -53,9 +53,40 @@ URLそのものは生成させない。使わなくなったCTAはJSONから削�
 CTA一覧と同様、追加・削除はこのJSONファイルを直接編集するだけでよい（コード変更不要）。
 `STYLE_REFERENCES_PATH` で別ファイルを指定することも可能（通常は不要）。
 
-## 手動実行（管理画面代わり）
+## NGワード・トンマナチェック
 
-新しいアプリを作らず、GitHub Actionsの「Run workflow」画面自体を簡易的な管理画面として使える。
+[`config/ng-words.json`](./config/ng-words.json) に登録した語句は、査読エージェントに渡す前に機械的に
+本文をスキャンし、含まれていればリスク表現の点数を下げるよう指示する(AIの判断だけに頼らない機械チェックとの併用)。
+薬機法・景表法的にグレーな断定表現や、自社として避けたい言い回しを人間が随時追加・削除できる(コード変更不要)。
+
+## サムネイル(アイキャッチ)のデザイン参考
+
+[`config/thumbnail-style.json`](./config/thumbnail-style.json) に参考画像のURLを登録すると、
+アイキャッチ画像生成時にgpt-image-1の画像編集API(`images.edit`)でその配色・構図・雰囲気を踏襲して
+新しく描き直す。管理画面の「サムネイル」ページからも編集できる。参考画像の取得・編集APIが失敗した場合は
+自動的に通常生成にフォールバックする。
+
+## タイトルA/B案・画像alt/ファイル名のSEO対応
+
+ライティングエージェントはメインのタイトルとは別に、雰囲気の異なる代替タイトル案を2つ提示する
+(`draft.altTitles`)。人間が下書き確認時に選べるよう、microCMSの`reviewComments`フィールドに追記して保存する。
+画像ファイル名は`Date.now()`のような無意味な名前を避け、記事タイトルから生成したスラッグを含む名前にする
+(`src/lib/seoFile.ts`)。alt文言も125文字を超える場合は自動的に切り詰める。
+
+## リライト候補検知・週次サマリー
+
+`src/agents/rewriteCandidates.ts` が、公開から`REWRITE_THRESHOLD_DAYS`(既定90)日以上経過した記事を
+リストアップする。あくまで「提案」に留め、自動でのリライト・再公開は行わない。
+`.github/workflows/weekly-report.yml`が週1回(月曜21:10 JST)起動し、直近7日間の
+公開・下書き・差し戻し・エラー件数の合計(`data/daily-stats.json`に日次蓄積)とリライト候補をSlackに送信する。
+
+## 手動実行（管理画面 / GitHub Actions）
+
+非エンジニアでも使えるよう、[`admin/`](./admin/README.md) に専用の管理画面(Next.js、Vercelにデプロイ)がある。
+「記事を生成」ページからキーワード・CTA(ドロップダウン)・参考URLを指定して手動生成をリクエストでき、
+「数値解析」ページで公開数の推移、「設定」ページで生成方式(全自動/手動)の切り替えができる。
+
+管理画面を使わない場合、GitHub Actionsの「Run workflow」画面からも直接同じことができる。
 「Actions」タブ →「Daily Content Pipeline」→「Run workflow」を開くと、以下の入力欄が出る。
 
 - **keyword**: 記事にしたいキーワードを直接指定する。指定すると情報収集エージェントをスキップし、そのキーワードだけで1本生成する
@@ -63,11 +94,11 @@ CTA一覧と同様、追加・削除はこのJSONファイルを直接編集す�
 - **source_urls**: 参考にしてほしいURL（カンマ区切り、任意）
 
 3つとも空欄のまま実行すれば、通常の自動収集(1日3本分の設定はそのまま)で実行される。
-毎日06:00 JSTの自動cronはこれらの入力を使わず、常に自動収集モードで動く。
+毎日07:00 JSTの自動cronはこれらの入力を使わず、常に自動収集モードで動く(管理画面の「設定」で
+生成方式を「手動」に切り替えている間はスキップされる。手動実行(workflow_dispatch)はどちらでも動く)。
 
-将来的に、生成本数の推移や査読スコアの分布、CTAのクリック率・記事の閲覧率などを見たい場合は、
-GitHub Actionsの実行ログだけでは追えないため、サイト側にGA4等の計測を入れたうえで別途ダッシュボードを
-検討する（サイト側の対応が前提になるため、現時点ではスコープ外）。
+生成本数の推移は管理画面の「数値解析」ページで確認できる。CTAのクリック率・記事の閲覧率などのアクセス解析は
+優先度が低いため後回し(将来的にサイト側にGA4等の計測を入れたうえで別途対応する想定)。
 
 ## 構成
 
@@ -127,10 +158,14 @@ microCMS側でフィールドIDをリネームした場合はこのJSONファイ
 
 ## GitHub Actions
 
-`.github/workflows/daily-content.yml` がcronで毎日起動する（既定: 06:00 JST）。以下をリポジトリのSecrets/Variablesに登録すること:
+- `.github/workflows/daily-content.yml`: 毎日07:00 JSTに記事生成・公開まで実行する（管理画面の「設定」で`PIPELINE_PAUSED`変数が`true`の間はスケジュール実行のみスキップ、手動実行は常に動く）。
+- `.github/workflows/daily-notify.yml`: 毎日21:00 JSTに、その日の自動実行結果をまとめて1通のSlackメッセージとして送信する（自動実行はリアルタイム通知しない。手動実行は従来通り即時通知）。
+- `.github/workflows/weekly-report.yml`: 毎週月曜21:10 JSTに、直近7日間の集計とリライト候補をSlackに送信する。
+
+以下をリポジトリのSecrets/Variablesに登録すること:
 
 - Secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `MICROCMS_SERVICE_DOMAIN`, `MICROCMS_API_KEY`, `SLACK_WEBHOOK_URL`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_FOLDER_ID`
-- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`, `DAILY_API_CALL_CAP`, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`
+- Variables: `MICROCMS_ARTICLES_ENDPOINT`, `MICROCMS_KEYWORDS_ENDPOINT`, `COMPETITOR_RSS_FEEDS`, `DAILY_ARTICLE_COUNT`, `DAILY_API_CALL_CAP`, `REVIEW_AUTO_PUBLISH_THRESHOLD`, `REVIEW_NEEDS_CHECK_THRESHOLD`, `PUBLISH_TARGET_NAME`, `PIPELINE_PAUSED`(管理画面から自動更新), `REWRITE_THRESHOLD_DAYS`(任意、既定90)
 
 ## CI
 

@@ -13,6 +13,11 @@ const envSchema = z.object({
   CTA_CONFIG_PATH: z.string().optional(),
   STYLE_REFERENCES_PATH: z.string().optional(),
   PENDING_NOTIFICATIONS_PATH: z.string().optional(),
+  NG_WORDS_PATH: z.string().optional(),
+  SITE_CONFIG_PATH: z.string().optional(),
+  THUMBNAIL_STYLE_PATH: z.string().optional(),
+  DAILY_STATS_PATH: z.string().optional(),
+  REWRITE_THRESHOLD_DAYS: z.coerce.number().int().positive().default(90),
 
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 

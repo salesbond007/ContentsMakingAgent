@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendJsonArrayEntry, dispatchContentWorkflow, getRepoJsonFile } from "@/lib/github";
+import { isTrustedOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedOrigin(request)) {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
+  }
+
   const body = (await request.json()) as { keyword?: string; cta_id?: string; source_urls?: string };
   const keyword = body.keyword?.trim();
   const ctaId = body.cta_id?.trim();

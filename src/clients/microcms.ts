@@ -106,6 +106,41 @@ export class MicroCmsClient {
     return Array.from(new Set(categories));
   }
 
+  /**
+   * 内部リンク自動提案用に、直近の公開記事のタイトル・IDを取得する。
+   * URLはコード側(siteConfig.articleUrlPattern)で組み立てるため、ここではIDのみ返す。
+   */
+  async getArticlesForInternalLinking(limit = 30): Promise<{ id: string; title: string }[]> {
+    const art = this.fields.articles;
+    const query = new URLSearchParams({
+      fields: `id,${art.title}`,
+      limit: String(limit),
+      orders: "-publishedAt",
+    });
+    const res = await this.request<MicroCmsListResponse<Record<string, unknown>>>(
+      `/${this.env.MICROCMS_ARTICLES_ENDPOINT}?${query.toString()}`
+    );
+    return res.contents
+      .map((c) => ({ id: c.id as string, title: c[art.title] as string }))
+      .filter((a) => a.id && a.title);
+  }
+
+  /** リライト候補検知用に、公開記事のタイトル・公開日を取得する(最大100件、公開日降順)。 */
+  async getArticlesForRewriteCheck(limit = 100): Promise<{ id: string; title: string; publishedAt: string }[]> {
+    const art = this.fields.articles;
+    const query = new URLSearchParams({
+      fields: `id,${art.title},publishedAt`,
+      limit: String(Math.min(limit, 100)),
+      orders: "-publishedAt",
+    });
+    const res = await this.request<MicroCmsListResponse<Record<string, unknown>>>(
+      `/${this.env.MICROCMS_ARTICLES_ENDPOINT}?${query.toString()}`
+    );
+    return res.contents
+      .map((c) => ({ id: c.id as string, title: c[art.title] as string, publishedAt: c.publishedAt as string }))
+      .filter((a) => a.id && a.title && a.publishedAt);
+  }
+
   /** 探索で見つけた新規キーワードを台帳に追加する（重複防止のため次回以降の巡回対象になる）。 */
   async registerKeyword(keyword: string, sourceUrls: string[]): Promise<string> {
     const kw = this.fields.keywords;

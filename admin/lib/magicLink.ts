@@ -2,6 +2,16 @@
 
 const MAGIC_LINK_TTL_MS = 15 * 60 * 1000; // 15分
 
+// 使用済みトークンの記録(ベストエフォート)。同一インスタンス内でのリンク再利用(メールクライアントの
+// リンクプリフェッチや、リンクを踏んだ後に誤って再度開く等)を防ぐ。サーバーレスで複数インスタンスに
+// またがる場合は完全には防げないが、有効期限15分と合わせて多層防御として機能する。
+const consumedTokens = new Set<string>();
+
+function scheduleForget(token: string) {
+  // サーバーレス実行環境ではプロセスがすぐ終了するため、あくまでベストエフォートの掃除。
+  setTimeout(() => consumedTokens.delete(token), MAGIC_LINK_TTL_MS);
+}
+
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("SESSION_SECRET が設定されていません");
@@ -45,7 +55,7 @@ export async function createMagicLinkToken(email: string): Promise<string> {
   return `${payload}.${signature}`;
 }
 
-/** トークンを検証し、有効であればメールアドレスを返す。無効・期限切れならnull。 */
+/** トークンを検証し、有効であればメールアドレスを返す。無効・期限切れ・使用済みならnull。 */
 export async function verifyMagicLinkToken(token: string): Promise<string | null> {
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
@@ -53,10 +63,15 @@ export async function verifyMagicLinkToken(token: string): Promise<string | null
   const expected = await hmacHex(payload);
   if (!timingSafeEqual(expected, signature)) return null;
 
+  if (consumedTokens.has(token)) return null;
+
   try {
     const { email, expiresAt } = JSON.parse(base64UrlDecode(payload)) as { email: string; expiresAt: number };
     if (typeof email !== "string" || typeof expiresAt !== "number") return null;
     if (Date.now() >= expiresAt) return null;
+
+    consumedTokens.add(token);
+    scheduleForget(token);
     return email;
   } catch {
     return null;

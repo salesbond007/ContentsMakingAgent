@@ -69,8 +69,8 @@ export default function SettingsPage() {
     setMessage({
       type: "success",
       text: nextPaused
-        ? "自動実行を停止しました。手動生成は引き続き使えます。"
-        : "自動実行を再開しました。次回の毎日07:00 JSTから通常運転に戻ります。",
+        ? "生成方式を「手動」に切り替えました(自動実行は停止)。「記事を生成」からの手動生成は引き続き使えます。"
+        : "生成方式を「全自動」に切り替えました。次回の毎日07:00 JSTから通常運転に戻ります。",
     });
   }
 
@@ -81,20 +81,34 @@ export default function SettingsPage() {
       <div className="card">
         <div className="item-header">
           <div>
-            <h2 style={{ marginBottom: 4 }}>自動実行のステータス</h2>
+            <h2 style={{ marginBottom: 4 }}>生成方式</h2>
             <p style={{ margin: 0 }}>
               現在:{" "}
               <span className="badge" style={paused ? { background: "#fdecea", color: "#b00020" } : undefined}>
-                {paused ? "停止中" : "稼働中"}
+                {paused ? "手動" : "全自動"}
               </span>
             </p>
           </div>
-          <button className={paused ? undefined : "danger"} onClick={togglePause} disabled={togglingPause}>
-            {togglingPause ? "処理中..." : paused ? "稼働を再開する" : "稼働を停止する"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className={paused ? undefined : "secondary"}
+              onClick={() => paused && togglePause()}
+              disabled={togglingPause || !paused}
+            >
+              全自動
+            </button>
+            <button
+              className={paused ? "secondary" : "danger"}
+              onClick={() => !paused && togglePause()}
+              disabled={togglingPause || paused}
+            >
+              手動(強制停止)
+            </button>
+          </div>
         </div>
         <p style={{ marginBottom: 0 }}>
-          停止中は毎日07:00 JSTの自動生成のみスキップされます。「記事を生成」からの手動実行は停止中でも実行できます。
+          「全自動」中は毎日07:00 JSTに自動で記事生成・公開まで実行されます。「手動(強制停止)」に切り替えると
+          自動実行だけが止まります(＝稼働停止と同じ意味)。「記事を生成」からの手動実行はどちらのモードでも使えます。
         </p>
       </div>
 

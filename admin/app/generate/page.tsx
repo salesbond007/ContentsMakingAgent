@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CtaOption } from "@/lib/types";
 
 interface HistoryEntry {
   keyword: string | null;
@@ -17,6 +18,7 @@ export default function GeneratePage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [ctas, setCtas] = useState<CtaOption[]>([]);
 
   function loadHistory() {
     return fetch("/api/generate")
@@ -26,6 +28,9 @@ export default function GeneratePage() {
 
   useEffect(() => {
     loadHistory().finally(() => setHistoryLoading(false));
+    fetch("/api/ctas")
+      .then((r) => r.json())
+      .then((data) => setCtas(data.ctas ?? []));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -63,8 +68,15 @@ export default function GeneratePage() {
         <label>keyword(記事にしたいキーワード。空欄可)</label>
         <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="例: 生成AIによる契約書レビュー自動化" />
 
-        <label>cta_id(使いたいCTAのid。「CTA管理」画面で確認できます。空欄可)</label>
-        <input type="text" value={ctaId} onChange={(e) => setCtaId(e.target.value)} placeholder="例: seminar" />
+        <label>CTA(空欄の場合はAIが記事内容から自動的に判断します)</label>
+        <select value={ctaId} onChange={(e) => setCtaId(e.target.value)}>
+          <option value="">(AIにおまかせ)</option>
+          {ctas.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}({c.id})
+            </option>
+          ))}
+        </select>
 
         <label>参考URL(任意、カンマ区切り)</label>
         <textarea value={sourceUrls} onChange={(e) => setSourceUrls(e.target.value)} placeholder="https://example.com/a, https://example.com/b" />

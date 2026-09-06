@@ -38,6 +38,8 @@ export interface ArticleDraft {
   };
   topic: Topic;
   figures: FigureSpec[];
+  /** タイトルA/B案(執筆エージェントが提示する代替タイトル、人間が下書き確認時に選べるよう査読コメントに記載する)。 */
+  altTitles?: string[];
 }
 
 export interface GeneratedImage {

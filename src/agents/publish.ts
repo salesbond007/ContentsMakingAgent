@@ -1,4 +1,5 @@
 import { MicroCmsClient } from "../clients/microcms.js";
+import { toSeoFileName } from "../lib/seoFile.js";
 import type { ArticleDraft, GeneratedImage, ReviewResult, RenderedFigure } from "../types.js";
 import type { Env } from "../config.js";
 import { logger } from "../lib/logger.js";
@@ -19,17 +20,22 @@ export async function publishArticle(
 ): Promise<string> {
   let eyecatch: { url: string; alt: string } | undefined;
   if (image) {
-    const uploaded = await microcms.uploadMedia(image.buffer, `${Date.now()}-eyecatch.png`, image.mimeType);
+    const fileName = toSeoFileName(draft.title, "eyecatch", "png");
+    const uploaded = await microcms.uploadMedia(image.buffer, fileName, image.mimeType);
     eyecatch = { url: uploaded.url, alt: image.altText };
   }
 
   const resolvedDraft: ArticleDraft = { ...draft, body: await resolveFigurePlaceholders(microcms, draft, figures) };
 
   const status = review.verdict === "auto-publish" ? "publish" : "draft";
+  const reviewWithTitleVariants: ReviewResult =
+    draft.altTitles && draft.altTitles.length > 0
+      ? { ...review, comments: [...review.comments, `タイトル代替案: ${draft.altTitles.join(" / ")}`] }
+      : review;
 
   const articleId = await microcms.createArticleFromDraft(
     resolvedDraft,
-    review,
+    reviewWithTitleVariants,
     env.PUBLISH_TARGET_NAME,
     status,
     eyecatch
@@ -59,11 +65,8 @@ async function resolveFigurePlaceholders(
 
     try {
       const extension = figure.mimeType === "image/svg+xml" ? "svg" : "png";
-      const uploaded = await microcms.uploadMedia(
-        figure.buffer,
-        `${Date.now()}-figure-${figure.token}.${extension}`,
-        figure.mimeType
-      );
+      const fileName = toSeoFileName(draft.title, `figure-${figure.token}`, extension);
+      const uploaded = await microcms.uploadMedia(figure.buffer, fileName, figure.mimeType);
       body = body.replaceAll(
         placeholder,
         `<img src="${uploaded.url}" alt="${escapeHtmlAttr(figure.altText)}" />`

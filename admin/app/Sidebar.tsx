@@ -5,8 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/", label: "ダッシュボード", icon: "◆" },
   { href: "/generate", label: "記事を生成", icon: "✎" },
+  { href: "/analytics", label: "数値解析", icon: "📊" },
   { href: "/ctas", label: "CTA", icon: "🔗" },
   { href: "/style-references", label: "文体の参考記事", icon: "📄" },
+  { href: "/thumbnail", label: "サムネイル", icon: "🖼" },
   { href: "/settings", label: "設定", icon: "⚙" },
 ];
 
