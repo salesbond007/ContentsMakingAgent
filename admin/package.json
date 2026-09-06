@@ -1,0 +1,23 @@
+{
+  "name": "contents-making-agent-admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BondAIメディア コンテンツパイプライン用の簡易管理画面（CTA・文体参考記事の編集、手動記事生成のトリガー）",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}
